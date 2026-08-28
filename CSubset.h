@@ -9,6 +9,7 @@ int errCount = 0;
 int nextLocalOffset = -4;
 bool addPrint = false;
 int labelCount = 0;
+string currentFuncName = "main";
 
 extern ofstream logFile;
 extern ofstream errorFile;
@@ -161,7 +162,6 @@ public:
     asmFile << "format ELF executable 3\n";
     asmFile << "entry main\n"; //??
     asmFile << "segment readable writeable\n";
-    asmFile << "segment readable executable\n";
 
     visit(ctx->program());
     logFile << "Line " << ctx->getStart()->getLine() << ": start : program\n\n";
@@ -212,6 +212,7 @@ public:
   // # phase 1
   any visitUnitFuncDefinition(CSubsetParser::UnitFuncDefinitionContext *ctx) override
   {
+    asmFile << "segment readable executable\n";
     visit(ctx->func_definition());
     logRule(ctx, "unit : func_definition");
     return nullptr;
@@ -265,6 +266,8 @@ public:
     visit(ctx->type_specifier());
     string retType = ctx->type_specifier()->getText();
     string funcName = ctx->ID()->getText();
+    // #
+    currentFuncName = funcName;
     SymbolInfo *symbol = new SymbolInfo(funcName, "ID", retType);
     bool declared = false;
     SymbolInfo *found = symbolTable->lookUp(funcName);
@@ -339,6 +342,7 @@ public:
     string retType = ctx->type_specifier()->getText();
     string funcName = ctx->ID()->getText();
     // #
+    currentFuncName = funcName;
     nextLocalOffset = -4; // initialize for all function
     asmFile << funcName << ":\n";
     asmFile << "\tPUSH EBP\n\tMOV EBP, ESP\n";
@@ -725,14 +729,15 @@ public:
     }
     else
     {
-      if (symbolTable->isRootScope())
+      SymbolInfo *found = symbolTable->lookUp(name);
+      if (found->getAuxInfo()->getOffset() == 0)
       {
         asmFile << "\t; print " << name << "\n\tMOV EAX, [" << name << "]\n"
                 << "\tPUSH EAX\n\tCALL OUTDEC\n\tPOP EAX\n";
       }
       else
       {
-        SymbolInfo* found = symbolTable->lookUp(name);
+        SymbolInfo *found = symbolTable->lookUp(name);
         int offset = found->getAuxInfo()->getOffset();
         asmFile << "\t; print " << name << "\n\tMOV EAX, [EBP" << offset << "]\n"
                 << "\tPUSH EAX\n\tCALL OUTDEC\n\tPOP EAX\n";
@@ -745,8 +750,10 @@ public:
   // # phase 1
   any visitStatementReturn(CSubsetParser::StatementReturnContext *ctx) override
   {
-    visit(ctx->RETURN());
     visit(ctx->expression());
+    // #
+    asmFile << "\tPOP EAX\n";
+    asmFile << "\tJMP " << currentFuncName << "_exit\n";
     logRule(ctx, "statement : RETURN expression SEMICOLON");
     return nullptr;
   }
@@ -792,7 +799,7 @@ public:
       r = found->getAuxInfo();
     }
     // # global
-    if (symbolTable->isRootScope())
+    if (r->getOffset() == 0)
     {
       asmFile << "[" << varName << "]";
     }
@@ -857,11 +864,8 @@ public:
     asmFile << "\tMOV ";
     AuxInfo *a1 = any_cast<AuxInfo *>(visit(ctx->variable()));
     asmFile << ", EAX\n";
-    if(symbolTable->isRootScope()){
-      // if local also
-      asmFile << "\tPOP EAX\n";
-    }
-      // string name = ctx->variable()->getText();
+    asmFile << "\tPOP EAX\n";
+    // string name = ctx->variable()->getText();
     // string type = symbolTable->getDataType(name);
 
     // to avoid further checking
@@ -908,8 +912,67 @@ public:
   // # phase 1
   any visitLogicExprWLogicOp(CSubsetParser::LogicExprWLogicOpContext *ctx) override
   {
+    // Evaluate left operand
     AuxInfo *t1 = any_cast<AuxInfo *>(visit(ctx->r1));
+    asmFile << "\tTEST EAX, EAX\n";
+    string logicop = ctx->LOGICOP()->getText();
+    int skip_label = labelCount++;
+    if (logicop == "&&")
+    {
+      asmFile << "\tJE L" << skip_label << "\n";
+    }
+    else if (logicop == "||")
+    {
+      asmFile << "\tJNE L" << skip_label << "\n";
+    }
+    // evaluate right operand
     AuxInfo *t2 = any_cast<AuxInfo *>(visit(ctx->r2));
+
+    asmFile << "\tTEST EAX, EAX\n";
+    if (logicop == "&&")
+    {
+      asmFile << "\tJE L" << skip_label << "\n";
+    }
+    else if (logicop == "||")
+    {
+      asmFile << "\tJNE L" << skip_label << "\n";
+    }
+
+    int next_label = labelCount++;
+
+    if (logicop == "&&")
+    {
+      asmFile << "\tMOV EAX, 1\n";
+      // asmFile<<"L"<<next_label<<":\n";
+      // asmFile << "\tTEST EAX, EAX\n";
+      // int end_label = labelCount++;
+      // asmFile << "\tJE L"<<end_label<<"\n";
+      // asmFile<<"L"<<end_label<<":\n";
+    }
+    else if (logicop == "||")
+    {
+      asmFile << "\tMOV EAX, 0\n";
+      // asmFile<<"L"<<next_label<<":\n";
+    }
+    asmFile << "\tJMP L" << next_label << "\n";
+    asmFile << "L" << skip_label << ":\n";
+    if (logicop == "&&")
+    {
+      asmFile << "\tMOV EAX, 0\n";
+      // asmFile<<"L"<<next_label<<":\n";
+      // asmFile << "\tTEST EAX, EAX\n";
+      // int end_label = labelCount++;
+      // asmFile << "\tJE L"<<end_label<<"\n";
+      // asmFile<<"L"<<end_label<<":\n";
+    }
+    else if (logicop == "||")
+    {
+      asmFile << "\tMOV EAX, 1\n";
+      // asmFile<<"L"<<next_label<<":\n";
+    }
+    asmFile << "L" << next_label << ":\n";
+
+    asmFile << "\tPUSH EAX\n";
     AuxInfo *r = new AuxInfo(DataType::INT);
     if (t1->getDataType() != DataType::INT || t2->getDataType() != DataType::INT)
     {
@@ -934,42 +997,50 @@ public:
   {
     AuxInfo *a2 = any_cast<AuxInfo *>(visit(ctx->s2));
     AuxInfo *a1 = any_cast<AuxInfo *>(visit(ctx->s1));
-    
+
     AuxInfo *r = new AuxInfo(DataType::INT);
 
-    //#
+    // #
     asmFile << "\tPOP EAX\n";
     asmFile << "\tPOP EBX\n";
 
     asmFile << "\tCMP EAX, EBX\n";
     string relop = ctx->RELOP()->getText();
     string jmpInstr;
-    if(relop == "=="){
+    if (relop == "==")
+    {
       jmpInstr = "JE";
     }
-    else if(relop == "!="){
+    else if (relop == "!=")
+    {
       jmpInstr = "JNE";
     }
-    else if(relop == "<"){
+    else if (relop == "<")
+    {
       jmpInstr = "JL";
     }
-    else if(relop == "<="){
+    else if (relop == "<=")
+    {
       jmpInstr = "JLE";
     }
-    else if(relop == ">"){
+    else if (relop == ">")
+    {
       jmpInstr = "JG";
     }
-    else if(relop == ">="){
+    else if (relop == ">=")
+    {
       jmpInstr = "JGE";
-    } 
+    }
     int true_label = labelCount++;
-    asmFile << "\t"<<jmpInstr<<" L"<<true_label<<"\n";
+    asmFile << "\t" << jmpInstr << " L" << true_label << "\n";
     asmFile << "\tMOV EAX, 0\n";
     int end_label = labelCount++;
-    asmFile << "\tJMP L"<<end_label<<"\n";
-    asmFile << "L"<<true_label<<":\n";
+    asmFile << "\tJMP L" << end_label << "\n";
+    asmFile << "L" << true_label << ":\n";
     asmFile << "\tMOV EAX, 1\n";
-    asmFile << "L"<<end_label<<":\n";
+    asmFile << "L" << end_label << ":\n";
+
+    asmFile << "\tPUSH EAX\n";
     // to avoid further checking
     if (a1->getDataType() == DataType::ERROR || a2->getDataType() == DataType::ERROR)
     {
@@ -1010,15 +1081,19 @@ public:
     AuxInfo *a2 = any_cast<AuxInfo *>(visit(ctx->term()));
     AuxInfo *a1 = any_cast<AuxInfo *>(visit(ctx->simple_expression()));
     AuxInfo *r;
-    //#
+    // #
     asmFile << "\tPOP EAX\n";
     asmFile << "\tPOP EBX\n";
-    if(ctx->ADDOP()->getText() == "+"){
+    if (ctx->ADDOP()->getText() == "+")
+    {
       asmFile << "\tADD EAX, EBX\n";
     }
-    else{
+    else
+    {
       asmFile << "\tSUB EAX, EBX\n";
     }
+
+    asmFile << "\tPUSH EAX\n";
 
     if (a1->getDataType() == DataType::ERROR || a2->getDataType() == DataType::ERROR)
     {
@@ -1053,15 +1128,18 @@ public:
     AuxInfo *a1 = any_cast<AuxInfo *>(visit(ctx->term()));
     asmFile << "\tPOP EAX\n";
     asmFile << "\tPOP EBX\n";
-    if(ctx->MULOP()->getText() == "*"){
+    if (ctx->MULOP()->getText() == "*")
+    {
       asmFile << "\tMUL EBX\n";
     }
-    else{
+    else
+    {
       //%
-      asmFile <<"\tXOR EDX, EDX\n";
+      asmFile << "\tXOR EDX, EDX\n";
       asmFile << "\tDIV EBX\n";
       asmFile << "\tMOV EAX, EDX\n";
     }
+    asmFile << "\tPUSH EAX\n";
     AuxInfo *r = new AuxInfo(DataType::ERROR);
     if ((a1->getDataType() == DataType::VOID) || (a2->getDataType() == DataType::VOID))
     {
@@ -1096,11 +1174,12 @@ public:
   any visitUnaryExprAdd(CSubsetParser::UnaryExprAddContext *ctx) override
   {
     AuxInfo *a1 = any_cast<AuxInfo *>(visit(ctx->unary_expression()));
-    //#
-    if(ctx->ADDOP()->getText() == "-"){
-      asmFile<<"\tNEG EAX\n";
+    // #
+    if (ctx->ADDOP()->getText() == "-")
+    {
+      asmFile << "\tNEG EAX\n";
     }
-    asmFile<<"\tPUSH EAX\n";
+    asmFile << "\tPUSH EAX\n";
     if (a1->getDataType() == DataType::VOID)
     {
       logError(ctx, "Void function used in expression");
@@ -1118,16 +1197,18 @@ public:
   any visitUnaryExprNot(CSubsetParser::UnaryExprNotContext *ctx) override
   {
     AuxInfo *a1 = any_cast<AuxInfo *>(visit(ctx->unary_expression()));
+    asmFile << "\tPOP EAX\n";
     asmFile << "\tTEST EAX, EAX\n";
     int label_not_true = labelCount++;
-    asmFile << "\tJNE L"<<label_not_true<<"\n";
-    asmFile <<"\tMOV EAX, 1\n";
+    asmFile << "\tJNE L" << label_not_true << "\n";
+    asmFile << "\tMOV EAX, 1\n";
     int label_not_end = labelCount++;
-    asmFile << "\tJMP L"<<label_not_end<<"\n";
-    asmFile << "L"<<label_not_true<<":\n";
+    asmFile << "\tJMP L" << label_not_end << "\n";
+    asmFile << "L" << label_not_true << ":\n";
     asmFile << "\t MOV EAX, 0\n";
-    asmFile << "L"<<label_not_end<<":\n";
+    asmFile << "L" << label_not_end << ":\n";
 
+    asmFile << "\tPUSH EAX\n";
     // asmFile << "\tNOT EAX\n";
     // asmFile << "\tPUSH EAX\n";
 
@@ -1150,10 +1231,7 @@ public:
   // # phase 1
   any visitUnaryExprFactor(CSubsetParser::UnaryExprFactorContext *ctx) override
   {
-    // #
-    asmFile << "\tMOV EAX, ";
     AuxInfo *a1 = any_cast<AuxInfo *>(visit(ctx->factor()));
-    asmFile << "\n";
     asmFile << "\tPUSH EAX\n";
     logRule(ctx, "unary_expression : factor");
     return a1;
@@ -1162,7 +1240,10 @@ public:
   // # phase 1
   any visitFactorVar(CSubsetParser::FactorVarContext *ctx) override
   {
+    // #
+    asmFile << "\tMOV EAX, ";
     AuxInfo *a1 = any_cast<AuxInfo *>(visit(ctx->variable()));
+    asmFile << "\n";
     logRule(ctx, "factor : variable");
     return a1;
   }
@@ -1223,6 +1304,8 @@ public:
   // # phase 1
   any visitFactorExpr(CSubsetParser::FactorExprContext *ctx) override
   {
+
+    asmFile << "\tPOP EAX\n";
     AuxInfo *a1 = any_cast<AuxInfo *>(visit(ctx->expression()));
     logRule(ctx, "factor : LPAREN expression RPAREN");
     return a1;
@@ -1234,7 +1317,9 @@ public:
     logRule(ctx, "factor : CONST_INT");
     AuxInfo *r = new AuxInfo(DataType::INT);
     // #
+    asmFile << "\tMOV EAX, ";
     asmFile << ctx->CONST_INT()->getText();
+    asmFile << "\n";
     return r;
   }
 
@@ -1244,17 +1329,31 @@ public:
     logRule(ctx, "factor : CONST_FLOAT");
     AuxInfo *r = new AuxInfo(DataType::FLOAT);
     // #
+
+    asmFile << "\tMOV EAX, ";
     asmFile << ctx->CONST_FLOAT()->getText();
+    asmFile << "\n";
+
     return r;
   }
 
   // # phase 1
   any visitFactorIncOp(CSubsetParser::FactorIncOpContext *ctx) override
   {
+    asmFile << "\tMOV EAX, ";
     AuxInfo *a1 = any_cast<AuxInfo *>(visit(ctx->variable()));
+    asmFile << "\n";
     // #
     asmFile << "\n\tPUSH EAX\n\tINC EAX\n";
-    asmFile << "\tMOV [EBP" << a1->getOffset() << "], EAX\n";
+    SymbolInfo *found = symbolTable->lookUp(ctx->variable()->getText());
+    if (found->getAuxInfo()->getOffset() != 0)
+    {
+      asmFile << "\tMOV [EBP" << a1->getOffset() << "], EAX\n";
+    }
+    else
+    {
+      asmFile << "\tMOV [" << ctx->variable()->getText() << "], EAX\n";
+    }
     asmFile << "\tPOP EAX\n";
     if (a1->getDataType() != DataType::INT && a1->getDataType() != DataType::FLOAT)
     {
@@ -1268,10 +1367,20 @@ public:
   // # phase 1
   any visitFactorDecOp(CSubsetParser::FactorDecOpContext *ctx) override
   {
+    asmFile << "\tMOV EAX, ";
     AuxInfo *a1 = any_cast<AuxInfo *>(visit(ctx->variable()));
+    asmFile << "\n";
     // #
     asmFile << "\n\tPUSH EAX\n\tDEC EAX\n";
-    asmFile << "\tMOV [EBP" << a1->getOffset() << "], EAX\n";
+    SymbolInfo *found = symbolTable->lookUp(ctx->variable()->getText());
+    if (found->getAuxInfo()->getOffset() != 0)
+    {
+      asmFile << "\tMOV [EBP" << a1->getOffset() << "], EAX\n";
+    }
+    else
+    {
+      asmFile << "\tMOV [" << ctx->variable()->getText() << "], EAX\n";
+    }
     asmFile << "\tPOP EAX\n";
     if (a1->getDataType() != DataType::INT && a1->getDataType() != DataType::FLOAT)
     {

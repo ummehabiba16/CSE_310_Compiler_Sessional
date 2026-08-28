@@ -55,6 +55,7 @@ public:
         dataType = DataType::ERROR;
         size = 0;
         argCount = -1;
+        offset = 0;
     }
     // // for array
     // AuxInfo(string dataType, int size)
@@ -67,12 +68,14 @@ public:
         this->dataType = stringToType(dataType);
         this->isArray = false;
         this->argCount = -1;
+        this->offset = 0;
     }
     AuxInfo(DataType dataType)
     {
         this->dataType = dataType;
         this->isArray = false;
         this->argCount = -1;
+        this->offset = 0;
     }
     // function
     AuxInfo(string retType, vector<string> argTypes)
@@ -86,6 +89,7 @@ public:
         this->argTypes = d;
         this->argCount = argTypes.size();
         this->isArray = false;
+        this->offset = 0;
     }
 
     AuxInfo(string retType, vector<DataType> argTypes)
@@ -94,6 +98,7 @@ public:
         this->argTypes = argTypes;
         this->argCount = argTypes.size();
         this->isArray = false;
+        this->offset = 0;
     }
 
     DataType getDataType()

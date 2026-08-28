@@ -1,6 +1,8 @@
 format ELF executable 3
 entry main
 segment readable writeable
+	i dd 1 dup(0)
+	j dd 1 dup(0)
 segment readable executable
 main:
 	PUSH EBP
@@ -8,53 +10,185 @@ main:
 	SUB ESP, 4
 	SUB ESP, 4
 	SUB ESP, 4
+	SUB ESP, 4
+	SUB ESP, 4
+	SUB ESP, 4
+	MOV EAX, 1
+	PUSH EAX
+	MOV [i], EAX
+	POP EAX
+	; print i
+	MOV EAX, [i]
+	PUSH EAX
+	CALL OUTDEC
+	POP EAX
+	MOV EAX, 8
+	PUSH EAX
+	MOV EAX, 5
+	PUSH EAX
+	POP EAX
+	POP EBX
+	ADD EAX, EBX
+	PUSH EAX
+	MOV [j], EAX
+	POP EAX
+	; print j
+	MOV EAX, [j]
+	PUSH EAX
+	CALL OUTDEC
+	POP EAX
+	MOV EAX, [j]
+	PUSH EAX
 	MOV EAX, 2
 	PUSH EAX
-	MOV [EBP-4], EAX
-	MOV EAX, 3
+	POP EAX
+	POP EBX
+	MUL EBX
 	PUSH EAX
-	MOV [EBP-8], EAX
-	MOV EAX, [EBP-8]
+	MOV EAX, [i]
+	PUSH EAX
+	POP EAX
+	POP EBX
+	ADD EAX, EBX
+	PUSH EAX
+	MOV [EBP-4], EAX
+	POP EAX
+	; print k
+	MOV EAX, [EBP-4]
+	PUSH EAX
+	CALL OUTDEC
+	POP EAX
+	MOV EAX, 9
 	PUSH EAX
 	MOV EAX, [EBP-4]
 	PUSH EAX
 	POP EAX
 	POP EBX
+	XOR EDX, EDX
+	DIV EBX
+	MOV EAX, EDX
+	PUSH EAX
+	MOV [EBP-12], EAX
+	POP EAX
+	; print m
+	MOV EAX, [EBP-12]
+	PUSH EAX
+	CALL OUTDEC
+	POP EAX
+	MOV EAX, [EBP-8]
+	PUSH EAX
+	MOV EAX, [EBP-12]
+	PUSH EAX
+	POP EAX
+	POP EBX
 	CMP EAX, EBX
-	JL L0
+	JLE L0
 	MOV EAX, 0
 	JMP L1
 L0:
 	MOV EAX, 1
 L1:
-	MOV [EBP-12], EAX
-	; print c
-	MOV EAX, [EBP-12]
+	PUSH EAX
+	MOV [EBP-16], EAX
+	POP EAX
+	; print n
+	MOV EAX, [EBP-16]
 	PUSH EAX
 	CALL OUTDEC
 	POP EAX
-	MOV EAX, [EBP-8]
+	MOV EAX, [j]
 	PUSH EAX
-	MOV EAX, [EBP-4]
+	MOV EAX, [i]
 	PUSH EAX
 	POP EAX
 	POP EBX
 	CMP EAX, EBX
-	JG L2
+	JNE L2
 	MOV EAX, 0
 	JMP L3
 L2:
 	MOV EAX, 1
 L3:
-	MOV [EBP-12], EAX
-	; print c
-	MOV EAX, [EBP-12]
+	PUSH EAX
+	MOV [EBP-20], EAX
+	POP EAX
+	; print o
+	MOV EAX, [EBP-20]
 	PUSH EAX
 	CALL OUTDEC
 	POP EAX
+	MOV EAX, [EBP-16]
+	PUSH EAX
+	TEST EAX, EAX
+	JNE L4
+	MOV EAX, [EBP-20]
+	PUSH EAX
+	TEST EAX, EAX
+	JNE L4
+	MOV EAX, 0
+	JMP L5
+L4:
+	MOV EAX, 1
+L5:
+	PUSH EAX
+	MOV [EBP-24], EAX
+	POP EAX
+	; print p
+	MOV EAX, [EBP-24]
+	PUSH EAX
+	CALL OUTDEC
+	POP EAX
+	MOV EAX, [EBP-16]
+	PUSH EAX
+	TEST EAX, EAX
+	JE L6
+	MOV EAX, [EBP-20]
+	PUSH EAX
+	TEST EAX, EAX
+	JE L6
+	MOV EAX, 1
+	JMP L7
+L6:
+	MOV EAX, 0
+L7:
+	PUSH EAX
+	MOV [EBP-24], EAX
+	POP EAX
+	; print p
+	MOV EAX, [EBP-24]
+	PUSH EAX
+	CALL OUTDEC
+	POP EAX
+	MOV EAX, [EBP-24]
+
+	PUSH EAX
+	INC EAX
+	MOV [EBP-24], EAX
+	POP EAX
+	PUSH EAX
+	; print p
+	MOV EAX, [EBP-24]
+	PUSH EAX
+	CALL OUTDEC
+	POP EAX
+	MOV EAX, [EBP-24]
+	PUSH EAX
+	NEG EAX
+	PUSH EAX
+	MOV [EBP-4], EAX
+	POP EAX
+	; print k
+	MOV EAX, [EBP-4]
+	PUSH EAX
+	CALL OUTDEC
+	POP EAX
+	MOV EAX, 0
+	PUSH EAX
+	POP EAX
+	JMP main_exit
 main_exit:
 
-	ADD ESP, 12
+	ADD ESP, 24
 	POP EBP
 	MOV EAX, 1    ; syscall number: sys_exit
 	XOR EBX, EBX  ; exit code 0 (success)
