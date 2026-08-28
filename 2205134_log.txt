@@ -32,102 +32,94 @@ int a, b, c;
 
 Line 3: factor : CONST_INT
 
-1
+2
 
 Line 3: unary_expression : factor
 
-1
+2
 
 Line 3: term : unary_expression
 
-1
+2
 
 Line 3: simple_expression : term
 
-1
+2
 
 Line 3: rel_expression : simple_expression
 
-1
+2
 
 Line 3: logic_expression : rel_expression
 
-1
+2
 
 Line 3: variable : ID
 
-b
+a
 
 Line 3: expression : variable ASSIGNOP logic_expression
 
-b = 1
+a = 2
 
 Line 3: expression_statement : expression SEMICOLON
 
-b = 1;
+a = 2;
 
 Line 3: statement : expression_statement
 
-b = 1;
+a = 2;
 
 Line 2: statements : statements statement
 
 int a, b, c;
-    b = 1;
+    a = 2;
 
-Line 4: variable : ID
+Line 4: factor : CONST_INT
 
-b
-
-Line 4: factor : variable
-
-b
+3
 
 Line 4: unary_expression : factor
 
-b
-
-Line 4: unary_expression : ADDOP unary_expression
-
--b
+3
 
 Line 4: term : unary_expression
 
--b
+3
 
 Line 4: simple_expression : term
 
--b
+3
 
 Line 4: rel_expression : simple_expression
 
--b
+3
 
 Line 4: logic_expression : rel_expression
 
--b
+3
 
 Line 4: variable : ID
 
-a
+b
 
 Line 4: expression : variable ASSIGNOP logic_expression
 
-a = -b
+b = 3
 
 Line 4: expression_statement : expression SEMICOLON
 
-a = -b;
+b = 3;
 
 Line 4: statement : expression_statement
 
-a = -b;
+b = 3;
 
 Line 2: statements : statements statement
 
 int a, b, c;
-    b = 1;
-    a = -b;
+    a = 2;
+    b = 3;
 
 Line 5: variable : ID
 
@@ -141,25 +133,37 @@ Line 5: unary_expression : factor
 
 b
 
-Line 5: unary_expression : ADDOP unary_expression
+Line 5: variable : ID
 
-+b
+a
+
+Line 5: factor : variable
+
+a
+
+Line 5: unary_expression : factor
+
+a
 
 Line 5: term : unary_expression
 
-+b
+a
+
+Line 5: term : term MULOP unary_expression
+
+a * b
 
 Line 5: simple_expression : term
 
-+b
+a * b
 
 Line 5: rel_expression : simple_expression
 
-+b
+a * b
 
 Line 5: logic_expression : rel_expression
 
-+b
+a * b
 
 Line 5: variable : ID
 
@@ -167,87 +171,103 @@ c
 
 Line 5: expression : variable ASSIGNOP logic_expression
 
-c = +b
+c = a * b
 
 Line 5: expression_statement : expression SEMICOLON
 
-c = +b;
+c = a * b;
 
 Line 5: statement : expression_statement
 
-c = +b;
+c = a * b;
 
 Line 2: statements : statements statement
 
 int a, b, c;
-    b = 1;
-    a = -b;
-    c = +b;
+    a = 2;
+    b = 3;
+    c = a * b;
 
-Line 6: variable : ID
+Line 6: statement : PRINTLN LPAREN ID RPAREN SEMICOLON
 
-a
+println(c);
 
-Line 6: factor : variable
+Line 2: statements : statements statement
 
-a
+int a, b, c;
+    a = 2;
+    b = 3;
+    c = a * b;
+    println(c);
 
-Line 6: unary_expression : factor
-
-a
-
-Line 6: term : unary_expression
-
-a
-
-Line 6: simple_expression : term
+Line 7: variable : ID
 
 a
 
-Line 6: rel_expression : simple_expression
+Line 7: factor : variable
 
 a
 
-Line 6: logic_expression : rel_expression
+Line 7: unary_expression : factor
 
 a
 
-Line 6: variable : ID
+Line 7: variable : ID
 
 b
 
-Line 6: expression : variable ASSIGNOP logic_expression
+Line 7: factor : variable
 
-b = a
+b
 
-Line 6: expression_statement : expression SEMICOLON
+Line 7: unary_expression : factor
 
-b = a;
+b
 
-Line 6: statement : expression_statement
+Line 7: term : unary_expression
 
-b = a;
+b
+
+Line 7: term : term MULOP unary_expression
+
+b % a
+
+Line 7: simple_expression : term
+
+b % a
+
+Line 7: rel_expression : simple_expression
+
+b % a
+
+Line 7: logic_expression : rel_expression
+
+b % a
+
+Line 7: variable : ID
+
+c
+
+Line 7: expression : variable ASSIGNOP logic_expression
+
+c = b % a
+
+Line 7: expression_statement : expression SEMICOLON
+
+c = b % a;
+
+Line 7: statement : expression_statement
+
+c = b % a;
 
 Line 2: statements : statements statement
 
 int a, b, c;
-    b = 1;
-    a = -b;
-    c = +b;
-    b = a;
-
-Line 7: statement : PRINTLN LPAREN ID RPAREN SEMICOLON
-
-println(a);
-
-Line 2: statements : statements statement
-
-int a, b, c;
-    b = 1;
-    a = -b;
-    c = +b;
-    b = a;
-    println(a);
+    a = 2;
+    b = 3;
+    c = a * b;
+    println(c);
+    c = b % a;
 
 Line 8: statement : PRINTLN LPAREN ID RPAREN SEMICOLON
 
@@ -256,39 +276,23 @@ println(c);
 Line 2: statements : statements statement
 
 int a, b, c;
-    b = 1;
-    a = -b;
-    c = +b;
-    b = a;
-    println(a);
+    a = 2;
+    b = 3;
+    c = a * b;
     println(c);
-
-Line 9: statement : PRINTLN LPAREN ID RPAREN SEMICOLON
-
-println(b);
-
-Line 2: statements : statements statement
-
-int a, b, c;
-    b = 1;
-    a = -b;
-    c = +b;
-    b = a;
-    println(a);
+    c = b % a;
     println(c);
-    println(b);
 
 Line 1: compound_statement : LCURL statements RCURL
 
 {
     int a, b, c;
-    b = 1;
-    a = -b;
-    c = +b;
-    b = a;
-    println(a);
+    a = 2;
+    b = 3;
+    c = a * b;
     println(c);
-    println(b);
+    c = b % a;
+    println(c);
 }
 
 ScopeTable # 1.1
@@ -305,39 +309,36 @@ Line 1: func_definition : type_specifier ID LPAREN RPAREN compound_statement
 
 int main(){
     int a, b, c;
-    b = 1;
-    a = -b;
-    c = +b;
-    b = a;
-    println(a);
+    a = 2;
+    b = 3;
+    c = a * b;
     println(c);
-    println(b);
+    c = b % a;
+    println(c);
 }
 
 Line 1: unit : func_definition
 
 int main(){
     int a, b, c;
-    b = 1;
-    a = -b;
-    c = +b;
-    b = a;
-    println(a);
+    a = 2;
+    b = 3;
+    c = a * b;
     println(c);
-    println(b);
+    c = b % a;
+    println(c);
 }
 
 Line 1: program : unit
 
 int main(){
     int a, b, c;
-    b = 1;
-    a = -b;
-    c = +b;
-    b = a;
-    println(a);
+    a = 2;
+    b = 3;
+    c = a * b;
     println(c);
-    println(b);
+    c = b % a;
+    println(c);
 }
 
 Line 1: start : program
@@ -347,5 +348,5 @@ ScopeTable # 1
 
 
 
-Total lines: 10
+Total lines: 9
 Total errors: 0

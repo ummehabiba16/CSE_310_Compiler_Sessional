@@ -1,10 +1,9 @@
 int main(){
     int a, b, c;
-    b = 1;
-    a = -b;
-    c = +b;
-    b = a;
-    println(a);
+    a = 2;
+    b = 3;
+    c = a * b;
     println(c);
-    println(b);
+    c = b % a;
+    println(c);
 }

@@ -1007,7 +1007,17 @@ public:
     // #
     AuxInfo *a2 = any_cast<AuxInfo *>(visit(ctx->unary_expression()));
     AuxInfo *a1 = any_cast<AuxInfo *>(visit(ctx->term()));
-    asmFile << "\tMUL EBX\n";
+    asmFile << "\tPOP EAX\n";
+    asmFile << "\tPOP EBX\n";
+    if(ctx->MULOP()->getText() == "*"){
+      asmFile << "\tMUL EBX\n";
+    }
+    else{
+      //%
+      asmFile <<"\tXOR EDX, EDX\n";
+      asmFile << "\tDIV EBX\n";
+      asmFile << "\tMOV EAX, EDX\n";
+    }
     AuxInfo *r = new AuxInfo(DataType::ERROR);
     if ((a1->getDataType() == DataType::VOID) || (a2->getDataType() == DataType::VOID))
     {
