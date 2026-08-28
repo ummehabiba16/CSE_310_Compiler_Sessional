@@ -47,6 +47,7 @@ class AuxInfo
     int argCount;
     vector<DataType> argTypes;
     // vector<bool> argIsArray; //skipping: current grammar does not allow array as parameters
+    int offset;
 
 public:
     AuxInfo(){
@@ -120,6 +121,9 @@ public:
     {
         return argCount;
     }
+    int getOffset(){
+        return offset;
+    }
 
     bool getIsArray(){
         return isArray;
@@ -136,5 +140,8 @@ public:
     }
     void setIsArray(bool isArr){
         this->isArray = isArr;
+    }
+    void setOffset(int s){
+        this->offset = s;
     }
 };

@@ -7,10 +7,15 @@ using namespace std;
 
 int errCount = 0;
 int nextLocalOffset = -4;
+bool addPrint = false;
+
 extern ofstream logFile;
 extern ofstream errorFile;
-extern ofstream asmFile; //#
+extern ofstream asmFile; // #
 extern ofstream asmTempFile;
+
+
+string printFunction = "\n\n; ---- OUTDEC: print integer in EAX as decimal, followed by newline ----\nOUTDEC:\n\tPUSH EBX\n\tPUSH ECX\n\tPUSH EDX\n\tPUSH ESI\n\tOR   EAX, EAX\n\tJGE  OUTDEC_POSITIVE\n\tNEG  EAX\n\tPUSH EAX\n\tSUB  ESP, 4\n\tMOV  byte [ESP], '-'\n\tMOV  EAX, 4\n\tMOV  EBX, 1\n\tMOV  ECX, ESP\n\tMOV  EDX, 1\n\tINT  0x80\n\tADD  ESP, 4\n\tPOP  EAX\nOUTDEC_POSITIVE:\n\tXOR  ECX, ECX\n\tMOV  EBX, 10\nOUTDEC_DIGIT_LOOP:\n\tXOR  EDX, EDX\n\tDIV  EBX\n\tADD  DL, 30h\n\tPUSH EDX\n\tINC  ECX\n\tTEST EAX, EAX\n\tJNZ  OUTDEC_DIGIT_LOOP\n\tMOV  ESI, ECX\n\tMOV  EBX, 1\n\tMOV  EDX, 1\nOUTDEC_PRINT_LOOP:\n\tTEST ESI, ESI\n\tJZ   OUTDEC_NEWLINE\n\tMOV  EAX, 4\n\tMOV  ECX, ESP\n\tINT  0x80\n\tADD  ESP, 4\n\tDEC  ESI\n\tJMP  OUTDEC_PRINT_LOOP\nOUTDEC_NEWLINE:\n\tSUB  ESP, 4\n\tMOV  byte [ESP], 10\n\tMOV  EAX, 4\n\tMOV  ECX, ESP\n\tINT  0x80\n\tADD  ESP, 4\n\tPOP  ESI\n\tPOP  EDX\n\tPOP  ECX\n\tPOP  EBX\n\tRET";
 
 void logRule(antlr4::ParserRuleContext *ctx, string rule)
 {
@@ -36,14 +41,23 @@ void logError(antlr4::ParserRuleContext *ctx, string error)
   logFile << "Error at line " << ctx->getStart()->getLine() << ": " << error << "\n\n";
 }
 
-class ParamInfo{
-  public:
-    DataType dataType;
-    bool hasId;
-    ParamInfo(DataType dt, bool hasId){
-      this->dataType = dt;
-      this->hasId = hasId;
-    }
+void copyFromFile(ofstream& temp, ofstream& original){
+  temp.close();
+  ifstream tempIn("2205134Temp.asm");
+  original << tempIn.rdbuf();
+  tempIn.close();
+}
+
+class ParamInfo
+{
+public:
+  DataType dataType;
+  bool hasId;
+  ParamInfo(DataType dt, bool hasId)
+  {
+    this->dataType = dt;
+    this->hasId = hasId;
+  }
 };
 
 // string intFloatCheck(string t1, string t2)
@@ -139,36 +153,37 @@ public:
   {
     this->symbolTable = new SymbolTable(30);
   }
-  //# phase 1
+  // # phase 1
   any visitStart(CSubsetParser::StartContext *ctx) override
   {
-    //#
+    // #
     asmFile << "format ELF executable 3\n";
     asmFile << "entry main\n"; //??
     asmFile << "segment readable writeable\n";
     asmFile << "segment readable executable\n";
-   
+
     visit(ctx->program());
     logFile << "Line " << ctx->getStart()->getLine() << ": start : program\n\n";
     symbolTable->printAllScopeTableNonEmpty();
     logFile << "\n";
     logFile << "Total lines: " << ctx->getStop()->getLine() << "\n";
     logFile << "Total errors: " << errCount << "\n";
-    //#
-    asmFile.append(asmTempFile)// pending ??
-    return nullptr;
+    // #
+    if(addPrint){
+      asmFile << printFunction;
+    }
+        return nullptr;
   }
 
-  
-  //# phase 1
+  // # phase 1
   any visitProgramUnit(CSubsetParser::ProgramUnitContext *ctx) override
   {
     visit(ctx->unit());
     logRule(ctx, "program : unit");
     return nullptr;
   }
-  
-  //# phase 1
+
+  // # phase 1
   any visitProgramAgain(CSubsetParser::ProgramAgainContext *ctx) override
   {
     visit(ctx->program());
@@ -176,8 +191,8 @@ public:
     logRule(ctx, "program : program unit");
     return nullptr; //?
   }
-  
-  //# phase 1
+
+  // # phase 1
   any visitUnitVarDeclaration(CSubsetParser::UnitVarDeclarationContext *ctx) override
   {
     visit(ctx->var_declaration());
@@ -191,8 +206,8 @@ public:
     logRule(ctx, "unit : func_declaration");
     return nullptr;
   }
-  
-  //# phase 1
+
+  // # phase 1
   any visitUnitFuncDefinition(CSubsetParser::UnitFuncDefinitionContext *ctx) override
   {
     visit(ctx->func_definition());
@@ -214,7 +229,8 @@ public:
     vector<ParamInfo> parameters = any_cast<vector<ParamInfo>>(visit(ctx->parameter_list()));
     AuxInfo *funcInfo = symbol->getAuxInfo();
     vector<DataType> dataTypes;
-    for(int i = 0; i < parameters.size(); i++){
+    for (int i = 0; i < parameters.size(); i++)
+    {
       dataTypes.push_back(parameters[i].dataType);
     }
     funcInfo->setArgTypes(dataTypes);
@@ -275,19 +291,21 @@ public:
     vector<ParamInfo> parameters = any_cast<vector<ParamInfo>>(visit(ctx->parameter_list()));
     AuxInfo *funcInfo = symbol->getAuxInfo();
     vector<DataType> argTypes;
-    for(int i = 0; i < parameters.size(); i++){
+    for (int i = 0; i < parameters.size(); i++)
+    {
       argTypes.push_back(parameters[i].dataType);
-      if(!parameters[i].hasId){
-        string err = to_string(i+1) + "th parameter's name not given in function definition of "+funcName;
+      if (!parameters[i].hasId)
+      {
+        string err = to_string(i + 1) + "th parameter's name not given in function definition of " + funcName;
         logError(ctx, err);
       }
     }
     funcInfo->setArgTypes(argTypes);
-    
+
     if (declared)
     {
       vector<DataType> declaredTypes = found->getAuxInfo()->getArgTypes();
-      
+
       if (parameters.size() != declaredTypes.size())
       {
         string err = "Total number of arguments mismatch with declaration in function " + funcName;
@@ -311,15 +329,17 @@ public:
     logRule(ctx, "func_definition : type_specifier ID LPAREN parameter_list RPAREN compound_statement");
     return nullptr;
   }
-  
-  //# phase 1
+
+  // # phase 1
   any visitFuncDefWoParameters(CSubsetParser::FuncDefWoParametersContext *ctx) override
   {
     visit(ctx->type_specifier());
     string retType = ctx->type_specifier()->getText();
     string funcName = ctx->ID()->getText();
-    //#
-    asmFile << funcName <<":\n";
+    // #
+    nextLocalOffset = -4 ;//initialize for all function
+    asmFile << funcName << ":\n";
+    asmFile << "\tPUSH EBP\n\tMOV EBP, ESP\n";
     SymbolInfo *symbol = new SymbolInfo(funcName, "ID", retType);
     SymbolInfo *found = symbolTable->lookUp(funcName);
 
@@ -360,28 +380,30 @@ public:
       }
     }
     visit(ctx->compound_statement());
-    //#
-    asmFile<<funcName<<"_exit:\n";
-    asmFile<<"\tMOV EAX, 1    ; syscall number: sys_exit\n";
-    asmFile<<"\tXOR EBX, EBX  ; exit code 0 (success)\n";
-    asmFile<<"\tINT 0x80\n";
-    asmFile<<"\n\tADD ESP, 0\n\tPOP EBP\n\tRET";
-
+    // #
+    asmFile << funcName << "_exit:\n";
+    asmFile << "\n\tADD ESP, "<<((-4) - nextLocalOffset);    
+    asmFile << "\n\tPOP EBP";
+    asmFile << "\n\tMOV EAX, 1    ; syscall number: sys_exit";
+    asmFile << "\n\tXOR EBX, EBX  ; exit code 0 (success)";
+    asmFile << "\n\tINT 0x80";
+    asmFile << "\n\tPOP EBP\n\tRET\n";
     symbolTable->exitScope();
     logRule(ctx, "func_definition : type_specifier ID LPAREN RPAREN compound_statement");
     return nullptr;
   }
 
-  any visitStrayTokenParameterList(CSubsetParser::StrayTokenParameterListContext *ctx) override {
+  any visitStrayTokenParameterList(CSubsetParser::StrayTokenParameterListContext *ctx) override
+  {
     visit(ctx->type_specifier());
     string type = ctx->type_specifier()->getText();
     vector<ParamInfo> types;
     types.push_back(ParamInfo(stringToType(type), false));
-    logRule(ctx->type_specifier(), "parameter_list : type_specifier"); //sample output shows int only instead of int-, sending ctx->type_specifier(), now getText() will be called on that
-    string err = "syntax error, unexpected token(s) '"+ctx->getStop()->getText()+"' before ')'";
+    logRule(ctx->type_specifier(), "parameter_list : type_specifier"); // sample output shows int only instead of int-, sending ctx->type_specifier(), now getText() will be called on that
+    string err = "syntax error, unexpected token(s) '" + ctx->getStop()->getText() + "' before ')'";
     logError(ctx, err);
     return types;
-    //parameter_list : type_specifier .
+    // parameter_list : type_specifier .
   }
 
   any visitSingleParameterWoId(CSubsetParser::SingleParameterWoIdContext *ctx) override
@@ -406,7 +428,7 @@ public:
     {
       string err = "Multiple declaration of " + name + " in parameter";
       logError(ctx, err);
-      //return types;
+      // return types;
     }
     types.push_back(ParamInfo(stringToType(type), true));
     logRule(ctx, "parameter_list : type_specifier ID");
@@ -444,8 +466,8 @@ public:
 
   // whichever calls compound_statement must call enter scope and exit scope before and after.
   // it is not done inside compound_statement, since for functionDeclaration scope is entered at LPAREN before LCURL
-  
-  //# phase 1
+
+  // # phase 1
   any visitCompoundStmtNonEmpty(CSubsetParser::CompoundStmtNonEmptyContext *ctx) override
   {
     visit(ctx->statements());
@@ -453,24 +475,23 @@ public:
     return nullptr;
   }
 
-  //# phase 1
+  // # phase 1
   any visitCompoundStmtEmpty(CSubsetParser::CompoundStmtEmptyContext *ctx) override
   {
     logRule(ctx, "compound_statement : LCURL RCURL");
     return nullptr;
   }
 
-  
-  //# phase 1
+  // # phase 1
   any visitVarDeclaration(CSubsetParser::VarDeclarationContext *ctx) override
   {
     visit(ctx->type_specifier());
     string type = ctx->type_specifier()->getText();
     vector<SymbolInfo *> symbols = any_cast<vector<SymbolInfo *>>(visit(ctx->declaration_list()));
-    //#
+    // #
     //? can I use symbols.size()?
-    // ? can I use the global flag?
-    asmFile << "\tSUB ESP, "<< ((-4) - nextLocalOffset);
+    //  ? can I use the global flag?
+    asmFile << "\tSUB ESP, " << ((-4) - nextLocalOffset)<<"\n";
     if (stringToType(type) == DataType::VOID)
     {
       logError(ctx, "Variable type cannot be void");
@@ -493,8 +514,7 @@ public:
     return nullptr;
   }
 
-  
-  //# phase 1
+  // # phase 1
   any visitTypeSpecifierInt(CSubsetParser::TypeSpecifierIntContext *ctx) override
   {
     logRule(ctx, "type_specifier : INT");
@@ -506,8 +526,8 @@ public:
     logRule(ctx, "type_specifier : FLOAT");
     return DataType::FLOAT;
   }
-  
-  //# phase 1
+
+  // # phase 1
   any visitTypeSpecifierVoid(CSubsetParser::TypeSpecifierVoidContext *ctx) override
   {
     logRule(ctx, "type_specifier : VOID");
@@ -554,51 +574,62 @@ public:
     // logRule(ctx, "declaration_list: ID LTHIRD CONST_FLOAT RTHIRD");
     return symbols;
   }
-  any visitStrayTokenDeclarationList(CSubsetParser::StrayTokenDeclarationListContext *ctx) override {
+  any visitStrayTokenDeclarationList(CSubsetParser::StrayTokenDeclarationListContext *ctx) override
+  {
     vector<SymbolInfo *> symbols;
-    SymbolInfo* symbol = new SymbolInfo(ctx->I1->getText(), "ID");
+    SymbolInfo *symbol = new SymbolInfo(ctx->I1->getText(), "ID");
     symbols.push_back(symbol);
-    string err = "syntax error, unexpected token(s) '" + ctx->children[1]->getText() + " " + ctx->I2->getText() + "' in declaration list"; //thanks to claude
+    string err = "syntax error, unexpected token(s) '" + ctx->children[1]->getText() + " " + ctx->I2->getText() + "' in declaration list"; // thanks to claude
     logRule(ctx, "declaration_list : ID", ctx->I1->getText());
     logError(ctx, err);
     // ID . ID
     return symbols;
   }
 
-  
-  //# phase 1
+  // # phase 1
   any visitDeclarationListSingleId(CSubsetParser::DeclarationListSingleIdContext *ctx) override
   {
     vector<SymbolInfo *> symbols;
     string name = ctx->ID()->getText();
     SymbolInfo *symbol = new SymbolInfo(name, "ID");
     symbols.push_back(symbol);
-    //# global
-    asmFile << "\t" << name <<" dd 1 dup(0)\n";
+    //#
+    if (symbolTable->isRootScope())
+    {
+      asmFile << "\t" << name << " dd 1 dup(0)\n";
+    }
+    else
+    {
+      // local
+      symbol->getAuxInfo()->setOffset(nextLocalOffset);
+      nextLocalOffset -= 4;
+    }
     logRule(ctx, "declaration_list : ID");
-    // local
-    nextLocalOffset -= -4;
     return symbols;
   }
 
-  
-  //# phase 1
+  // # phase 1
   any visitDeclarationListMultipleVar(CSubsetParser::DeclarationListMultipleVarContext *ctx) override
   {
     vector<SymbolInfo *> symbols = any_cast<vector<SymbolInfo *>>(visit(ctx->declaration_list()));
     string name = ctx->ID()->getText();
     SymbolInfo *symbol = new SymbolInfo(name, "ID");
     symbols.push_back(symbol);
-    //# global
-    asmFile << "\t" << name <<" dd 1 dup(0)\n";
-    //# local
-    nextLocalOffset -= 4;
+    
+    if(symbolTable->isRootScope()){
+      // # global
+      asmFile << "\t" << name << " dd 1 dup(0)\n";
+    }
+    else{
+      // # local
+      symbol->getAuxInfo()->setOffset(nextLocalOffset);
+      nextLocalOffset -= 4;
+    }
     logRule(ctx, "declaration_list : declaration_list COMMA ID");
     return symbols;
   }
 
-  
-  //# phase 1
+  // # phase 1
   any visitMultipleStatements(CSubsetParser::MultipleStatementsContext *ctx) override
   {
     visit(ctx->statements());
@@ -607,16 +638,15 @@ public:
     return nullptr;
   }
 
-  
-  //# phase 1
+  // # phase 1
   any visitSingleStatement(CSubsetParser::SingleStatementContext *ctx) override
   {
     visit(ctx->statement());
     logRule(ctx, "statements : statement");
     return nullptr;
   }
-  
-  //# phase 1
+
+  // # phase 1
   any visitStatementVarDeclaration(CSubsetParser::StatementVarDeclarationContext *ctx) override
   {
     visit(ctx->var_declaration());
@@ -624,8 +654,7 @@ public:
     return nullptr;
   }
 
-  
-  //# phase 1
+  // # phase 1
   any visitStatementExpressionStmt(CSubsetParser::StatementExpressionStmtContext *ctx) override
   {
     visit(ctx->expression_statement());
@@ -633,8 +662,7 @@ public:
     return nullptr;
   }
 
-  
-  //# phase 1
+  // # phase 1
   any visitStatementCompoundStmt(CSubsetParser::StatementCompoundStmtContext *ctx) override
   {
     symbolTable->enterScope();
@@ -681,14 +709,16 @@ public:
     logRule(ctx, "statement : WHILE LPAREN expression RPAREN statement");
     return nullptr;
   }
-  
-  //# phase 1
+
+  // # phase 1
   any visitStatementPrintln(CSubsetParser::StatementPrintlnContext *ctx) override
   {
-    //# 
+    // #
     string name = ctx->ID()->getText();
-    asmFile << "\t; print "<<name<<"\tPUSH EAX\n\tMOV EAX, ["<<name<<"\n\tCALL OUTDEC\n\tPOP EAX\n";
-    asmTempFile << printFunction;
+    //for global??
+    //asmFile << "\t; print " << name << "\n\tPUSH EAX\n\tMOV EAX, [" << name << "\n\tCALL OUTDEC\n\tPOP EAX\n";
+    asmFile << "\t; print " << name << "\n\tPUSH EAX\n\tCALL OUTDEC\n\tPOP EAX\n";
+    addPrint = true;
     if (!symbolTable->lookUp(name))
     {
       logError(ctx, "Undeclared variable " + name);
@@ -696,8 +726,8 @@ public:
     logRule(ctx, "statement : PRINTLN LPAREN ID RPAREN SEMICOLON");
     return nullptr;
   }
-  
-  //# phase 1
+
+  // # phase 1
   any visitStatementReturn(CSubsetParser::StatementReturnContext *ctx) override
   {
     visit(ctx->RETURN());
@@ -706,16 +736,14 @@ public:
     return nullptr;
   }
 
-  
-  //# phase 1
+  // # phase 1
   any visitExpressionStmtEmpty(CSubsetParser::ExpressionStmtEmptyContext *ctx) override
   {
     logRule(ctx, "expression_statement : SEMICOLON");
     return nullptr;
   }
 
-  
-  //# phase 1
+  // # phase 1
   any visitExpressionStmtExpression(CSubsetParser::ExpressionStmtExpressionContext *ctx) override
   {
     visit(ctx->expression());
@@ -723,15 +751,16 @@ public:
     return nullptr;
   }
 
-  any visitExpressionMissingSemicolon(CSubsetParser::ExpressionMissingSemicolonContext *ctx) override {
+  any visitExpressionMissingSemicolon(CSubsetParser::ExpressionMissingSemicolonContext *ctx) override
+  {
     visit(ctx->expression());
-    string err = "syntax error, missing ';' after expression '"+ctx->expression()->getText() + "'";
+    string err = "syntax error, missing ';' after expression '" + ctx->expression()->getText() + "'";
     logError(ctx, err);
     logRule(ctx, "expression_statement : expression (missing SEMICOLON)");
     return nullptr;
   }
-  
-  //# phase 1
+
+  // # phase 1
   any visitVariableId(CSubsetParser::VariableIdContext *ctx) override
   {
     string varName = ctx->ID()->getText();
@@ -747,10 +776,14 @@ public:
     {
       r = found->getAuxInfo();
     }
-    //# global
-    asmFile << "["<< varName <<"]";
-    // local
-    asmFile << "[EBP - " << getOffset(varName) <<"]" //??
+    // # global
+    if(symbolTable->isRootScope()){
+      asmFile << "[" << varName << "]";
+    }
+    else{
+      // local
+      asmFile << "[EBP" << r->getOffset() << "]";
+    }
     logRule(ctx, "variable : ID");
     return r;
   }
@@ -790,19 +823,19 @@ public:
 
     return r;
   }
-  
-  //# phase 1
+
+  // # phase 1
   any visitExpressionLogicExpression(CSubsetParser::ExpressionLogicExpressionContext *ctx) override
   {
     AuxInfo *auxInfo = any_cast<AuxInfo *>(visit(ctx->logic_expression()));
     logRule(ctx, "expression : logic expression");
     return auxInfo;
   }
-  
-  //# phase 1
+
+  // # phase 1
   any visitExpressionVarAssignLogic(CSubsetParser::ExpressionVarAssignLogicContext *ctx) override
-  { 
-    //#
+  {
+    // #
     AuxInfo *a2 = any_cast<AuxInfo *>(visit(ctx->logic_expression()));
     asmFile << "\tMOV ";
     AuxInfo *a1 = any_cast<AuxInfo *>(visit(ctx->variable()));
@@ -814,8 +847,9 @@ public:
     // string type = symbolTable->getDataType(name);
 
     // to avoid further checking
-    if(a2->getDataType() == DataType::VOID){
-      logError(ctx,"Void function used in expression");
+    if (a2->getDataType() == DataType::VOID)
+    {
+      logError(ctx, "Void function used in expression");
     }
     else if (a1->getDataType() == DataType::ERROR || a2->getDataType() == DataType::ERROR)
     {
@@ -844,16 +878,16 @@ public:
     logRule(ctx, "expression : variable ASSIGNOP logic_expression");
     return a1;
   }
-  
-  //# phase 1
+
+  // # phase 1
   any visitLogicExprRelExpr(CSubsetParser::LogicExprRelExprContext *ctx) override
   {
     AuxInfo *auxInfo = any_cast<AuxInfo *>(visit(ctx->rel_expression()));
     logRule(ctx, "logic_expression : rel_expression");
     return auxInfo;
   }
-  
-  //# phase 1
+
+  // # phase 1
   any visitLogicExprWLogicOp(CSubsetParser::LogicExprWLogicOpContext *ctx) override
   {
     AuxInfo *t1 = any_cast<AuxInfo *>(visit(ctx->r1));
@@ -868,16 +902,16 @@ public:
 
     return r; // logicop always int
   }
-  
-  //# phase 1
+
+  // # phase 1
   any visitRelExprSimpleExpr(CSubsetParser::RelExprSimpleExprContext *ctx) override
   {
     AuxInfo *auxInfo = any_cast<AuxInfo *>(visit(ctx->simple_expression()));
     logRule(ctx, "rel_expression : simple_expression");
     return auxInfo;
   }
-  
-  //# phase 1
+
+  // # phase 1
   any visitRelExprWRelOp(CSubsetParser::RelExprWRelOpContext *ctx) override
   {
     AuxInfo *a1 = any_cast<AuxInfo *>(visit(ctx->s1));
@@ -901,22 +935,23 @@ public:
     return r; // result always int ?? if mismatch?
   }
 
-  any visitStraySimpleExpr(CSubsetParser::StraySimpleExprContext *ctx) override {
+  any visitStraySimpleExpr(CSubsetParser::StraySimpleExprContext *ctx) override
+  {
     AuxInfo *a1 = any_cast<AuxInfo *>(visit(ctx->term()));
-    logRule(ctx, "simple_expression : term"); //term ADDOP stray=(ASSIGNOP|RELOP|MULOP|LOGICOP) #straySimpleExpr
-    string err = "syntax error, invalid operand '"+ctx->stray->getText()+"' after '+'";
+    logRule(ctx, "simple_expression : term"); // term ADDOP stray=(ASSIGNOP|RELOP|MULOP|LOGICOP) #straySimpleExpr
+    string err = "syntax error, invalid operand '" + ctx->stray->getText() + "' after '+'";
     logError(ctx->term(), err);
     return a1;
   }
-  //# phase 1
+  // # phase 1
   any visitSimpleExprTerm(CSubsetParser::SimpleExprTermContext *ctx) override
   {
     AuxInfo *a1 = any_cast<AuxInfo *>(visit(ctx->term()));
     logRule(ctx, "simple_expression : term");
     return a1;
   }
-  
-  //# phase 1
+
+  // # phase 1
   any visitSimpleExprAdd(CSubsetParser::SimpleExprAddContext *ctx) override
   {
     AuxInfo *a1 = any_cast<AuxInfo *>(visit(ctx->simple_expression()));
@@ -939,19 +974,19 @@ public:
     logRule(ctx, "simple_expression : simple_expression ADDOP term");
     return r;
   }
-  
-  //# phase 1
+
+  // # phase 1
   any visitTermUnaryExpr(CSubsetParser::TermUnaryExprContext *ctx) override
   {
     AuxInfo *a1 = any_cast<AuxInfo *>(visit(ctx->unary_expression()));
     logRule(ctx, "term : unary_expression");
     return a1;
   }
-  
-  //# phase 1
+
+  // # phase 1
   any visitTermMul(CSubsetParser::TermMulContext *ctx) override
   {
-    //# 
+    // #
     AuxInfo *a2 = any_cast<AuxInfo *>(visit(ctx->unary_expression()));
     AuxInfo *a1 = any_cast<AuxInfo *>(visit(ctx->term()));
     asmFile << "\tMUL EBX\n";
@@ -984,12 +1019,13 @@ public:
     logRule(ctx, "term : term MULOP unary_expression");
     return r;
   }
-  
-  //# phase 1
+
+  // # phase 1
   any visitUnaryExprAdd(CSubsetParser::UnaryExprAddContext *ctx) override
   {
     AuxInfo *a1 = any_cast<AuxInfo *>(visit(ctx->unary_expression()));
-    if(a1->getDataType() == DataType::VOID){
+    if (a1->getDataType() == DataType::VOID)
+    {
       logError(ctx, "Void function used in expression");
       a1 = new AuxInfo(DataType::ERROR);
     }
@@ -1000,13 +1036,14 @@ public:
     logRule(ctx, "unary_expression : ADDOP unary_expression");
     return a1;
   }
-  
-  //# phase 1
+
+  // # phase 1
   any visitUnaryExprNot(CSubsetParser::UnaryExprNotContext *ctx) override
   {
     AuxInfo *a1 = any_cast<AuxInfo *>(visit(ctx->unary_expression()));
     AuxInfo *r;
-    if(a1->getDataType() == DataType::VOID){
+    if (a1->getDataType() == DataType::VOID)
+    {
       logError(ctx, "Void function used in expression");
       r = new AuxInfo(DataType::ERROR);
     }
@@ -1019,11 +1056,11 @@ public:
     r = new AuxInfo(DataType::INT);
     return r; // boolean like always int
   }
-  
-  //# phase 1
+
+  // # phase 1
   any visitUnaryExprFactor(CSubsetParser::UnaryExprFactorContext *ctx) override
   {
-    //#
+    // #
     asmFile << "\tMOV EAX, ";
     AuxInfo *a1 = any_cast<AuxInfo *>(visit(ctx->factor()));
     asmFile << "\n";
@@ -1032,8 +1069,8 @@ public:
     logRule(ctx, "unary_expression : factor");
     return a1;
   }
-  
-  //# phase 1
+
+  // # phase 1
   any visitFactorVar(CSubsetParser::FactorVarContext *ctx) override
   {
     AuxInfo *a1 = any_cast<AuxInfo *>(visit(ctx->variable()));
@@ -1067,7 +1104,8 @@ public:
       string err = "Total number of arguments mismatch in function " + funcName;
       logError(ctx, err);
     }
-    else{
+    else
+    {
       string err = string("");
       for (int i = 0; i < original.size(); i++)
       {
@@ -1078,14 +1116,14 @@ public:
         // }
         // else
         // {
-          if (args[i]->getDataType() != DataType::ERROR && original[i] != args[i]->getDataType())
-          {
-            err += to_string(i + 1);
-            err += "th argument mismatch in function ";
-            err += funcName;
-            logError(ctx, err);
-            break;
-          }
+        if (args[i]->getDataType() != DataType::ERROR && original[i] != args[i]->getDataType())
+        {
+          err += to_string(i + 1);
+          err += "th argument mismatch in function ";
+          err += funcName;
+          logError(ctx, err);
+          break;
+        }
         //}
       }
     }
@@ -1093,36 +1131,35 @@ public:
     return a1;
   }
 
-  
-  //# phase 1
+  // # phase 1
   any visitFactorExpr(CSubsetParser::FactorExprContext *ctx) override
   {
     AuxInfo *a1 = any_cast<AuxInfo *>(visit(ctx->expression()));
     logRule(ctx, "factor : LPAREN expression RPAREN");
     return a1;
   }
-  
-  //# phase 1
+
+  // # phase 1
   any visitFactorConstInt(CSubsetParser::FactorConstIntContext *ctx) override
   {
     logRule(ctx, "factor : CONST_INT");
     AuxInfo *r = new AuxInfo(DataType::INT);
-    //#
+    // #
     asmFile << ctx->CONST_INT()->getText();
     return r;
   }
-  
-  //# phase 1
+
+  // # phase 1
   any visitFactorConstFloat(CSubsetParser::FactorConstFloatContext *ctx) override
   {
     logRule(ctx, "factor : CONST_FLOAT");
     AuxInfo *r = new AuxInfo(DataType::FLOAT);
-    //#
+    // #
     asmFile << ctx->CONST_FLOAT()->getText();
     return r;
   }
-  
-  //# phase 1
+
+  // # phase 1
   any visitFactorIncOp(CSubsetParser::FactorIncOpContext *ctx) override
   {
     AuxInfo *a1 = any_cast<AuxInfo *>(visit(ctx->variable()));
@@ -1134,8 +1171,8 @@ public:
     logRule(ctx, "factor : variable INCOP");
     return a1;
   }
-  
-  //# phase 1
+
+  // # phase 1
   any visitFactorDecOp(CSubsetParser::FactorDecOpContext *ctx) override
   {
     AuxInfo *a1 = any_cast<AuxInfo *>(visit(ctx->variable()));
@@ -1166,7 +1203,7 @@ public:
   {
     vector<AuxInfo *> args;
     AuxInfo *a1 = any_cast<AuxInfo *>(visit(ctx->logic_expression()));
-    
+
     if (a1->getIsArray() == true)
     {
       string err = "Type mismatch, " + ctx->logic_expression()->getText() + " is an array";
@@ -1193,59 +1230,3 @@ public:
     return args;
   }
 };
-
-string printFunction = "; ---- OUTDEC: print integer in EAX as decimal, followed by newline ----
-OUTDEC:
-    PUSH EBX
-    PUSH ECX
-    PUSH EDX
-    PUSH ESI
-    OR   EAX, EAX
-    JGE  OUTDEC_POSITIVE
-    NEG  EAX
-    PUSH EAX
-    SUB  ESP, 4
-    MOV  byte [ESP], '-'
-    MOV  EAX, 4
-    MOV  EBX, 1
-    MOV  ECX, ESP
-    MOV  EDX, 1
-    INT  0x80
-    ADD  ESP, 4
-    POP  EAX
-OUTDEC_POSITIVE:
-    XOR  ECX, ECX
-    MOV  EBX, 10
-OUTDEC_DIGIT_LOOP:
-    XOR  EDX, EDX
-    DIV  EBX
-    ADD  DL, 30h
-    PUSH EDX
-    INC  ECX
-    TEST EAX, EAX
-    JNZ  OUTDEC_DIGIT_LOOP
-    MOV  ESI, ECX
-    MOV  EBX, 1
-    MOV  EDX, 1
-OUTDEC_PRINT_LOOP:
-    TEST ESI, ESI
-    JZ   OUTDEC_NEWLINE
-    MOV  EAX, 4
-    MOV  ECX, ESP
-    INT  0x80
-    ADD  ESP, 4
-    DEC  ESI
-    JMP  OUTDEC_PRINT_LOOP
-OUTDEC_NEWLINE:
-    SUB  ESP, 4
-    MOV  byte [ESP], 10
-    MOV  EAX, 4
-    MOV  ECX, ESP
-    INT  0x80
-    ADD  ESP, 4
-    POP  ESI
-    POP  EDX
-    POP  ECX
-    POP  EBX
-    RET
-"

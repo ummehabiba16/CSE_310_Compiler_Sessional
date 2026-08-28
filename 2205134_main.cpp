@@ -14,7 +14,7 @@ ofstream lexLogFile; // used by Lexer.g4's writeIntoLexLogFile()
 ofstream logFile("2205134_log.txt");
 ofstream errorFile("2205134_error.txt");
 ofstream asmFile("2205134.asm");
-ofstream asmTempFile("2205134Temp.asm")
+ofstream asmTempFile("2205134Temp.asm");
 
 int main(int argc, const char* argv[]) {
     if (argc < 2) {

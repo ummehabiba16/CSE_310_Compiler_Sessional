@@ -88,6 +88,10 @@ public:
         return !currentScope->isRootScope();
     }
 
+    bool isRootScope(){
+        return currentScope->isRootScope();
+    }
+
     /*Create a new scope table and make it the current one. Also, make the previous “current” scope table as its parent_scope table.*/
     void enterScope()
     { //? bool
