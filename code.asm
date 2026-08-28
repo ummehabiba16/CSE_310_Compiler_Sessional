@@ -8,17 +8,18 @@ main:
 	SUB ESP, 4
 	SUB ESP, 4
 .L1:
-	MOV EAX, [EBP-4]       ; Line 3
-	PUSH EAX
-	DEC EAX
-	MOV [EBP-4], EAX
-	POP EAX       ; Line 3
+	MOV EAX, 0       ; Line 3
 	MOV [EBP-8], EAX
 	PUSH EAX
 	POP EAX
 .L2:
 	MOV EAX, [EBP-8]       ; Line 4
-	CALL print_number
+	NOT EAX
+	PUSH EAX
+	POP EAX       ; Line 4
+	MOV [EBP-4], EAX
+	PUSH EAX
+	POP EAX
 .L3:
 	MOV EAX, [EBP-4]       ; Line 5
 	CALL print_number

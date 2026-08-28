@@ -8,6 +8,7 @@ using namespace std;
 int errCount = 0;
 int nextLocalOffset = -4;
 bool addPrint = false;
+int labelCount = 0;
 
 extern ofstream logFile;
 extern ofstream errorFile;
@@ -856,10 +857,11 @@ public:
     asmFile << "\tMOV ";
     AuxInfo *a1 = any_cast<AuxInfo *>(visit(ctx->variable()));
     asmFile << ", EAX\n";
-
-    // if local also
-    asmFile << "\tPOP EAX\n";
-    // string name = ctx->variable()->getText();
+    if(symbolTable->isRootScope()){
+      // if local also
+      asmFile << "\tPOP EAX\n";
+    }
+      // string name = ctx->variable()->getText();
     // string type = symbolTable->getDataType(name);
 
     // to avoid further checking
@@ -1040,6 +1042,11 @@ public:
   any visitUnaryExprAdd(CSubsetParser::UnaryExprAddContext *ctx) override
   {
     AuxInfo *a1 = any_cast<AuxInfo *>(visit(ctx->unary_expression()));
+    //#
+    if(ctx->ADDOP()->getText() == "-"){
+      asmFile<<"\tNEG EAX\n";
+    }
+    asmFile<<"\tPUSH EAX\n";
     if (a1->getDataType() == DataType::VOID)
     {
       logError(ctx, "Void function used in expression");
@@ -1057,6 +1064,19 @@ public:
   any visitUnaryExprNot(CSubsetParser::UnaryExprNotContext *ctx) override
   {
     AuxInfo *a1 = any_cast<AuxInfo *>(visit(ctx->unary_expression()));
+    asmFile << "\tTEST EAX, EAX\n";
+    int label_not_true = labelCount++;
+    asmFile << "\tJNE L"<<label_not_true<<"\n";
+    asmFile <<"\tMOV EAX, 1\n";
+    int label_not_end = labelCount++;
+    asmFile << "\tJMP L"<<label_not_end<<"\n";
+    asmFile << "L"<<label_not_true<<":\n";
+    asmFile << "\t MOV EAX, 0\n";
+    asmFile << "L"<<label_not_end<<":\n";
+
+    // asmFile << "\tNOT EAX\n";
+    // asmFile << "\tPUSH EAX\n";
+
     AuxInfo *r;
     if (a1->getDataType() == DataType::VOID)
     {
@@ -1080,11 +1100,7 @@ public:
     asmFile << "\tMOV EAX, ";
     AuxInfo *a1 = any_cast<AuxInfo *>(visit(ctx->factor()));
     asmFile << "\n";
-    // if local
-    if (!symbolTable->isRootScope())
-    {
-      asmFile << "\tPUSH EAX\n";
-    }
+    asmFile << "\tPUSH EAX\n";
     logRule(ctx, "unary_expression : factor");
     return a1;
   }

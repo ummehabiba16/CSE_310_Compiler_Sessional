@@ -7,55 +7,40 @@ main:
 	MOV EBP, ESP
 	SUB ESP, 4
 	SUB ESP, 4
-	MOV EAX, 5
-	PUSH EAX
-	MOV [EBP-4], EAX
-	POP EAX
-	MOV EAX, [EBP-4]
-	PUSH EAX
-	DEC EAX
-	MOV [EBP-4], EAX
-	POP EAX
-
+	SUB ESP, 4
+	MOV EAX, 1
 	PUSH EAX
 	MOV [EBP-8], EAX
-	POP EAX
-	; print b
 	MOV EAX, [EBP-8]
 	PUSH EAX
-	CALL OUTDEC
-	POP EAX
+	NEG EAX
+	PUSH EAX
+	MOV [EBP-4], EAX
+	MOV EAX, [EBP-8]
+	PUSH EAX
+	PUSH EAX
+	MOV [EBP-12], EAX
+	MOV EAX, [EBP-4]
+	PUSH EAX
+	MOV [EBP-8], EAX
 	; print a
 	MOV EAX, [EBP-4]
 	PUSH EAX
 	CALL OUTDEC
 	POP EAX
-	MOV EAX, 2
-	PUSH EAX
-	MOV [EBP-4], EAX
-	POP EAX
-	MOV EAX, [EBP-4]
-	PUSH EAX
-	INC EAX
-	MOV [EBP-4], EAX
-	POP EAX
-
-	PUSH EAX
-	MOV [EBP-8], EAX
-	POP EAX
-	; print b
-	MOV EAX, [EBP-8]
+	; print c
+	MOV EAX, [EBP-12]
 	PUSH EAX
 	CALL OUTDEC
 	POP EAX
-	; print a
-	MOV EAX, [EBP-4]
+	; print b
+	MOV EAX, [EBP-8]
 	PUSH EAX
 	CALL OUTDEC
 	POP EAX
 main_exit:
 
-	ADD ESP, 8
+	ADD ESP, 12
 	POP EBP
 	MOV EAX, 1    ; syscall number: sys_exit
 	XOR EBX, EBX  ; exit code 0 (success)
