@@ -133,6 +133,14 @@ Line 5: unary_expression : factor
 
 b
 
+Line 5: term : unary_expression
+
+b
+
+Line 5: simple_expression : term
+
+b
+
 Line 5: variable : ID
 
 a
@@ -149,21 +157,17 @@ Line 5: term : unary_expression
 
 a
 
-Line 5: term : term MULOP unary_expression
-
-a * b
-
 Line 5: simple_expression : term
 
-a * b
+a
 
-Line 5: rel_expression : simple_expression
+Line 5: rel_expression : simple_expression RELOP simple_expression
 
-a * b
+a < b
 
 Line 5: logic_expression : rel_expression
 
-a * b
+a < b
 
 Line 5: variable : ID
 
@@ -171,22 +175,22 @@ c
 
 Line 5: expression : variable ASSIGNOP logic_expression
 
-c = a * b
+c = a < b
 
 Line 5: expression_statement : expression SEMICOLON
 
-c = a * b;
+c = a < b;
 
 Line 5: statement : expression_statement
 
-c = a * b;
+c = a < b;
 
 Line 2: statements : statements statement
 
 int a, b, c;
     a = 2;
     b = 3;
-    c = a * b;
+    c = a < b;
 
 Line 6: statement : PRINTLN LPAREN ID RPAREN SEMICOLON
 
@@ -197,20 +201,8 @@ Line 2: statements : statements statement
 int a, b, c;
     a = 2;
     b = 3;
-    c = a * b;
+    c = a < b;
     println(c);
-
-Line 7: variable : ID
-
-a
-
-Line 7: factor : variable
-
-a
-
-Line 7: unary_expression : factor
-
-a
 
 Line 7: variable : ID
 
@@ -228,21 +220,37 @@ Line 7: term : unary_expression
 
 b
 
-Line 7: term : term MULOP unary_expression
+Line 7: simple_expression : term
 
-b % a
+b
+
+Line 7: variable : ID
+
+a
+
+Line 7: factor : variable
+
+a
+
+Line 7: unary_expression : factor
+
+a
+
+Line 7: term : unary_expression
+
+a
 
 Line 7: simple_expression : term
 
-b % a
+a
 
-Line 7: rel_expression : simple_expression
+Line 7: rel_expression : simple_expression RELOP simple_expression
 
-b % a
+a > b
 
 Line 7: logic_expression : rel_expression
 
-b % a
+a > b
 
 Line 7: variable : ID
 
@@ -250,24 +258,24 @@ c
 
 Line 7: expression : variable ASSIGNOP logic_expression
 
-c = b % a
+c = a > b
 
 Line 7: expression_statement : expression SEMICOLON
 
-c = b % a;
+c = a > b;
 
 Line 7: statement : expression_statement
 
-c = b % a;
+c = a > b;
 
 Line 2: statements : statements statement
 
 int a, b, c;
     a = 2;
     b = 3;
-    c = a * b;
+    c = a < b;
     println(c);
-    c = b % a;
+    c = a > b;
 
 Line 8: statement : PRINTLN LPAREN ID RPAREN SEMICOLON
 
@@ -278,9 +286,9 @@ Line 2: statements : statements statement
 int a, b, c;
     a = 2;
     b = 3;
-    c = a * b;
+    c = a < b;
     println(c);
-    c = b % a;
+    c = a > b;
     println(c);
 
 Line 1: compound_statement : LCURL statements RCURL
@@ -289,9 +297,9 @@ Line 1: compound_statement : LCURL statements RCURL
     int a, b, c;
     a = 2;
     b = 3;
-    c = a * b;
+    c = a < b;
     println(c);
-    c = b % a;
+    c = a > b;
     println(c);
 }
 
@@ -311,9 +319,9 @@ int main(){
     int a, b, c;
     a = 2;
     b = 3;
-    c = a * b;
+    c = a < b;
     println(c);
-    c = b % a;
+    c = a > b;
     println(c);
 }
 
@@ -323,9 +331,9 @@ int main(){
     int a, b, c;
     a = 2;
     b = 3;
-    c = a * b;
+    c = a < b;
     println(c);
-    c = b % a;
+    c = a > b;
     println(c);
 }
 
@@ -335,9 +343,9 @@ int main(){
     int a, b, c;
     a = 2;
     b = 3;
-    c = a * b;
+    c = a < b;
     println(c);
-    c = b % a;
+    c = a > b;
     println(c);
 }
 

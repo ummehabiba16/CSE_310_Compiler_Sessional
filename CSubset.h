@@ -932,9 +932,44 @@ public:
   // # phase 1
   any visitRelExprWRelOp(CSubsetParser::RelExprWRelOpContext *ctx) override
   {
-    AuxInfo *a1 = any_cast<AuxInfo *>(visit(ctx->s1));
     AuxInfo *a2 = any_cast<AuxInfo *>(visit(ctx->s2));
+    AuxInfo *a1 = any_cast<AuxInfo *>(visit(ctx->s1));
+    
     AuxInfo *r = new AuxInfo(DataType::INT);
+
+    //#
+    asmFile << "\tPOP EAX\n";
+    asmFile << "\tPOP EBX\n";
+
+    asmFile << "\tCMP EAX, EBX\n";
+    string relop = ctx->RELOP()->getText();
+    string jmpInstr;
+    if(relop == "=="){
+      jmpInstr = "JE";
+    }
+    else if(relop == "!="){
+      jmpInstr = "JNE";
+    }
+    else if(relop == "<"){
+      jmpInstr = "JL";
+    }
+    else if(relop == "<="){
+      jmpInstr = "JLE";
+    }
+    else if(relop == ">"){
+      jmpInstr = "JG";
+    }
+    else if(relop == ">="){
+      jmpInstr = "JGE";
+    } 
+    int true_label = labelCount++;
+    asmFile << "\t"<<jmpInstr<<" L"<<true_label<<"\n";
+    asmFile << "\tMOV EAX, 0\n";
+    int end_label = labelCount++;
+    asmFile << "\tJMP L"<<end_label<<"\n";
+    asmFile << "L"<<true_label<<":\n";
+    asmFile << "\tMOV EAX, 1\n";
+    asmFile << "L"<<end_label<<":\n";
     // to avoid further checking
     if (a1->getDataType() == DataType::ERROR || a2->getDataType() == DataType::ERROR)
     {
@@ -972,9 +1007,18 @@ public:
   // # phase 1
   any visitSimpleExprAdd(CSubsetParser::SimpleExprAddContext *ctx) override
   {
-    AuxInfo *a1 = any_cast<AuxInfo *>(visit(ctx->simple_expression()));
     AuxInfo *a2 = any_cast<AuxInfo *>(visit(ctx->term()));
+    AuxInfo *a1 = any_cast<AuxInfo *>(visit(ctx->simple_expression()));
     AuxInfo *r;
+    //#
+    asmFile << "\tPOP EAX\n";
+    asmFile << "\tPOP EBX\n";
+    if(ctx->ADDOP()->getText() == "+"){
+      asmFile << "\tADD EAX, EBX\n";
+    }
+    else{
+      asmFile << "\tSUB EAX, EBX\n";
+    }
 
     if (a1->getDataType() == DataType::ERROR || a2->getDataType() == DataType::ERROR)
     {
