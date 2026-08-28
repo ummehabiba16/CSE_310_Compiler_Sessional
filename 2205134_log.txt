@@ -10,41 +10,45 @@ Line 2: declaration_list : ID
 
 a
 
+Line 2: declaration_list : declaration_list COMMA ID
+
+a, b
+
 Line 2: var_declaration : type_specifier declaration_list SEMICOLON
 
-int a;
+int a, b;
 
 Line 2: statement : var_declaration
 
-int a;
+int a, b;
 
 Line 2: statements : statement
 
-int a;
+int a, b;
 
 Line 3: factor : CONST_INT
 
-2
+5
 
 Line 3: unary_expression : factor
 
-2
+5
 
 Line 3: term : unary_expression
 
-2
+5
 
 Line 3: simple_expression : term
 
-2
+5
 
 Line 3: rel_expression : simple_expression
 
-2
+5
 
 Line 3: logic_expression : rel_expression
 
-2
+5
 
 Line 3: variable : ID
 
@@ -52,41 +56,245 @@ a
 
 Line 3: expression : variable ASSIGNOP logic_expression
 
-a = 2
+a = 5
 
 Line 3: expression_statement : expression SEMICOLON
 
-a = 2;
+a = 5;
 
 Line 3: statement : expression_statement
 
-a = 2;
+a = 5;
 
 Line 2: statements : statements statement
 
-int a;
-    a = 2;
+int a, b;
+    a = 5;
 
-Line 4: statement : PRINTLN LPAREN ID RPAREN SEMICOLON
+Line 4: variable : ID
+
+a
+
+Line 4: factor : variable DECOP
+
+a--
+
+Line 4: unary_expression : factor
+
+a--
+
+Line 4: term : unary_expression
+
+a--
+
+Line 4: simple_expression : term
+
+a--
+
+Line 4: rel_expression : simple_expression
+
+a--
+
+Line 4: logic_expression : rel_expression
+
+a--
+
+Line 4: variable : ID
+
+b
+
+Line 4: expression : variable ASSIGNOP logic_expression
+
+b = a--
+
+Line 4: expression_statement : expression SEMICOLON
+
+b = a--;
+
+Line 4: statement : expression_statement
+
+b = a--;
+
+Line 2: statements : statements statement
+
+int a, b;
+    a = 5;
+    b = a--;
+
+Line 5: statement : PRINTLN LPAREN ID RPAREN SEMICOLON
+
+println(b);
+
+Line 2: statements : statements statement
+
+int a, b;
+    a = 5;
+    b = a--;
+    println(b);
+
+Line 6: statement : PRINTLN LPAREN ID RPAREN SEMICOLON
 
 println(a);
 
 Line 2: statements : statements statement
 
-int a;
+int a, b;
+    a = 5;
+    b = a--;
+    println(b);
+    println(a);
+
+Line 7: factor : CONST_INT
+
+2
+
+Line 7: unary_expression : factor
+
+2
+
+Line 7: term : unary_expression
+
+2
+
+Line 7: simple_expression : term
+
+2
+
+Line 7: rel_expression : simple_expression
+
+2
+
+Line 7: logic_expression : rel_expression
+
+2
+
+Line 7: variable : ID
+
+a
+
+Line 7: expression : variable ASSIGNOP logic_expression
+
+a = 2
+
+Line 7: expression_statement : expression SEMICOLON
+
+a = 2;
+
+Line 7: statement : expression_statement
+
+a = 2;
+
+Line 2: statements : statements statement
+
+int a, b;
+    a = 5;
+    b = a--;
+    println(b);
+    println(a);
     a = 2;
+
+Line 8: variable : ID
+
+a
+
+Line 8: factor : variable INCOP
+
+a++
+
+Line 8: unary_expression : factor
+
+a++
+
+Line 8: term : unary_expression
+
+a++
+
+Line 8: simple_expression : term
+
+a++
+
+Line 8: rel_expression : simple_expression
+
+a++
+
+Line 8: logic_expression : rel_expression
+
+a++
+
+Line 8: variable : ID
+
+b
+
+Line 8: expression : variable ASSIGNOP logic_expression
+
+b = a++
+
+Line 8: expression_statement : expression SEMICOLON
+
+b = a++;
+
+Line 8: statement : expression_statement
+
+b = a++;
+
+Line 2: statements : statements statement
+
+int a, b;
+    a = 5;
+    b = a--;
+    println(b);
+    println(a);
+    a = 2;
+    b = a++;
+
+Line 9: statement : PRINTLN LPAREN ID RPAREN SEMICOLON
+
+println(b);
+
+Line 2: statements : statements statement
+
+int a, b;
+    a = 5;
+    b = a--;
+    println(b);
+    println(a);
+    a = 2;
+    b = a++;
+    println(b);
+
+Line 10: statement : PRINTLN LPAREN ID RPAREN SEMICOLON
+
+println(a);
+
+Line 2: statements : statements statement
+
+int a, b;
+    a = 5;
+    b = a--;
+    println(b);
+    println(a);
+    a = 2;
+    b = a++;
+    println(b);
     println(a);
 
 Line 1: compound_statement : LCURL statements RCURL
 
 {
-    int a;
+    int a, b;
+    a = 5;
+    b = a--;
+    println(b);
+    println(a);
     a = 2;
+    b = a++;
+    println(b);
     println(a);
 }
 
 ScopeTable # 1.1
  7 --> < a , ID >
+ 8 --> < b , ID >
 
 
 ScopeTable # 1
@@ -96,24 +304,42 @@ ScopeTable # 1
 Line 1: func_definition : type_specifier ID LPAREN RPAREN compound_statement
 
 int main(){
-    int a;
+    int a, b;
+    a = 5;
+    b = a--;
+    println(b);
+    println(a);
     a = 2;
+    b = a++;
+    println(b);
     println(a);
 }
 
 Line 1: unit : func_definition
 
 int main(){
-    int a;
+    int a, b;
+    a = 5;
+    b = a--;
+    println(b);
+    println(a);
     a = 2;
+    b = a++;
+    println(b);
     println(a);
 }
 
 Line 1: program : unit
 
 int main(){
-    int a;
+    int a, b;
+    a = 5;
+    b = a--;
+    println(b);
+    println(a);
     a = 2;
+    b = a++;
+    println(b);
     println(a);
 }
 
@@ -124,5 +350,5 @@ ScopeTable # 1
 
 
 
-Total lines: 5
+Total lines: 11
 Total errors: 0

@@ -14,7 +14,6 @@ extern ofstream errorFile;
 extern ofstream asmFile; // #
 extern ofstream asmTempFile;
 
-
 string printFunction = "\n\n; ---- OUTDEC: print integer in EAX as decimal, followed by newline ----\nOUTDEC:\n\tPUSH EBX\n\tPUSH ECX\n\tPUSH EDX\n\tPUSH ESI\n\tOR   EAX, EAX\n\tJGE  OUTDEC_POSITIVE\n\tNEG  EAX\n\tPUSH EAX\n\tSUB  ESP, 4\n\tMOV  byte [ESP], '-'\n\tMOV  EAX, 4\n\tMOV  EBX, 1\n\tMOV  ECX, ESP\n\tMOV  EDX, 1\n\tINT  0x80\n\tADD  ESP, 4\n\tPOP  EAX\nOUTDEC_POSITIVE:\n\tXOR  ECX, ECX\n\tMOV  EBX, 10\nOUTDEC_DIGIT_LOOP:\n\tXOR  EDX, EDX\n\tDIV  EBX\n\tADD  DL, 30h\n\tPUSH EDX\n\tINC  ECX\n\tTEST EAX, EAX\n\tJNZ  OUTDEC_DIGIT_LOOP\n\tMOV  ESI, ECX\n\tMOV  EBX, 1\n\tMOV  EDX, 1\nOUTDEC_PRINT_LOOP:\n\tTEST ESI, ESI\n\tJZ   OUTDEC_NEWLINE\n\tMOV  EAX, 4\n\tMOV  ECX, ESP\n\tINT  0x80\n\tADD  ESP, 4\n\tDEC  ESI\n\tJMP  OUTDEC_PRINT_LOOP\nOUTDEC_NEWLINE:\n\tSUB  ESP, 4\n\tMOV  byte [ESP], 10\n\tMOV  EAX, 4\n\tMOV  ECX, ESP\n\tINT  0x80\n\tADD  ESP, 4\n\tPOP  ESI\n\tPOP  EDX\n\tPOP  ECX\n\tPOP  EBX\n\tRET";
 
 void logRule(antlr4::ParserRuleContext *ctx, string rule)
@@ -41,7 +40,8 @@ void logError(antlr4::ParserRuleContext *ctx, string error)
   logFile << "Error at line " << ctx->getStart()->getLine() << ": " << error << "\n\n";
 }
 
-void copyFromFile(ofstream& temp, ofstream& original){
+void copyFromFile(ofstream &temp, ofstream &original)
+{
   temp.close();
   ifstream tempIn("2205134Temp.asm");
   original << tempIn.rdbuf();
@@ -169,10 +169,11 @@ public:
     logFile << "Total lines: " << ctx->getStop()->getLine() << "\n";
     logFile << "Total errors: " << errCount << "\n";
     // #
-    if(addPrint){
+    if (addPrint)
+    {
       asmFile << printFunction;
     }
-        return nullptr;
+    return nullptr;
   }
 
   // # phase 1
@@ -337,7 +338,7 @@ public:
     string retType = ctx->type_specifier()->getText();
     string funcName = ctx->ID()->getText();
     // #
-    nextLocalOffset = -4 ;//initialize for all function
+    nextLocalOffset = -4; // initialize for all function
     asmFile << funcName << ":\n";
     asmFile << "\tPUSH EBP\n\tMOV EBP, ESP\n";
     SymbolInfo *symbol = new SymbolInfo(funcName, "ID", retType);
@@ -382,7 +383,7 @@ public:
     visit(ctx->compound_statement());
     // #
     asmFile << funcName << "_exit:\n";
-    asmFile << "\n\tADD ESP, "<<((-4) - nextLocalOffset);    
+    asmFile << "\n\tADD ESP, " << ((-4) - nextLocalOffset);
     asmFile << "\n\tPOP EBP";
     asmFile << "\n\tMOV EAX, 1    ; syscall number: sys_exit";
     asmFile << "\n\tXOR EBX, EBX  ; exit code 0 (success)";
@@ -488,10 +489,6 @@ public:
     visit(ctx->type_specifier());
     string type = ctx->type_specifier()->getText();
     vector<SymbolInfo *> symbols = any_cast<vector<SymbolInfo *>>(visit(ctx->declaration_list()));
-    // #
-    //? can I use symbols.size()?
-    //  ? can I use the global flag?
-    asmFile << "\tSUB ESP, " << ((-4) - nextLocalOffset)<<"\n";
     if (stringToType(type) == DataType::VOID)
     {
       logError(ctx, "Variable type cannot be void");
@@ -593,7 +590,7 @@ public:
     string name = ctx->ID()->getText();
     SymbolInfo *symbol = new SymbolInfo(name, "ID");
     symbols.push_back(symbol);
-    //#
+    // #
     if (symbolTable->isRootScope())
     {
       asmFile << "\t" << name << " dd 1 dup(0)\n";
@@ -601,6 +598,7 @@ public:
     else
     {
       // local
+      asmFile << "\tSUB ESP, 4\n";
       symbol->getAuxInfo()->setOffset(nextLocalOffset);
       nextLocalOffset -= 4;
     }
@@ -615,13 +613,16 @@ public:
     string name = ctx->ID()->getText();
     SymbolInfo *symbol = new SymbolInfo(name, "ID");
     symbols.push_back(symbol);
-    
-    if(symbolTable->isRootScope()){
+
+    if (symbolTable->isRootScope())
+    {
       // # global
       asmFile << "\t" << name << " dd 1 dup(0)\n";
     }
-    else{
+    else
+    {
       // # local
+      asmFile << "\tSUB ESP, 4\n";
       symbol->getAuxInfo()->setOffset(nextLocalOffset);
       nextLocalOffset -= 4;
     }
@@ -715,13 +716,26 @@ public:
   {
     // #
     string name = ctx->ID()->getText();
-    //for global??
-    //asmFile << "\t; print " << name << "\n\tPUSH EAX\n\tMOV EAX, [" << name << "\n\tCALL OUTDEC\n\tPOP EAX\n";
-    asmFile << "\t; print " << name << "\n\tPUSH EAX\n\tCALL OUTDEC\n\tPOP EAX\n";
+
     addPrint = true;
     if (!symbolTable->lookUp(name))
     {
       logError(ctx, "Undeclared variable " + name);
+    }
+    else
+    {
+      if (symbolTable->isRootScope())
+      {
+        asmFile << "\t; print " << name << "\n\tMOV EAX, [" << name << "]\n"
+                << "\tPUSH EAX\n\tCALL OUTDEC\n\tPOP EAX\n";
+      }
+      else
+      {
+        SymbolInfo* found = symbolTable->lookUp(name);
+        int offset = found->getAuxInfo()->getOffset();
+        asmFile << "\t; print " << name << "\n\tMOV EAX, [EBP" << offset << "]\n"
+                << "\tPUSH EAX\n\tCALL OUTDEC\n\tPOP EAX\n";
+      }
     }
     logRule(ctx, "statement : PRINTLN LPAREN ID RPAREN SEMICOLON");
     return nullptr;
@@ -777,10 +791,12 @@ public:
       r = found->getAuxInfo();
     }
     // # global
-    if(symbolTable->isRootScope()){
+    if (symbolTable->isRootScope())
+    {
       asmFile << "[" << varName << "]";
     }
-    else{
+    else
+    {
       // local
       asmFile << "[EBP" << r->getOffset() << "]";
     }
@@ -1065,7 +1081,10 @@ public:
     AuxInfo *a1 = any_cast<AuxInfo *>(visit(ctx->factor()));
     asmFile << "\n";
     // if local
-    asmFile << "\tPUSH EAX\n";
+    if (!symbolTable->isRootScope())
+    {
+      asmFile << "\tPUSH EAX\n";
+    }
     logRule(ctx, "unary_expression : factor");
     return a1;
   }
@@ -1163,6 +1182,10 @@ public:
   any visitFactorIncOp(CSubsetParser::FactorIncOpContext *ctx) override
   {
     AuxInfo *a1 = any_cast<AuxInfo *>(visit(ctx->variable()));
+    // #
+    asmFile << "\n\tPUSH EAX\n\tINC EAX\n";
+    asmFile << "\tMOV [EBP" << a1->getOffset() << "], EAX\n";
+    asmFile << "\tPOP EAX\n";
     if (a1->getDataType() != DataType::INT && a1->getDataType() != DataType::FLOAT)
     {
       logError(ctx, "invalid arg to incop");
@@ -1176,6 +1199,10 @@ public:
   any visitFactorDecOp(CSubsetParser::FactorDecOpContext *ctx) override
   {
     AuxInfo *a1 = any_cast<AuxInfo *>(visit(ctx->variable()));
+    // #
+    asmFile << "\n\tPUSH EAX\n\tDEC EAX\n";
+    asmFile << "\tMOV [EBP" << a1->getOffset() << "], EAX\n";
+    asmFile << "\tPOP EAX\n";
     if (a1->getDataType() != DataType::INT && a1->getDataType() != DataType::FLOAT)
     {
       logError(ctx, "invalid arg to decop");

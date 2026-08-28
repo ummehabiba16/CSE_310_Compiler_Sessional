@@ -6,15 +6,23 @@ main:
 	PUSH EBP
 	MOV EBP, ESP
 	SUB ESP, 4
+	SUB ESP, 4
 .L1:
-	MOV EAX, 2       ; Line 3
+	MOV EAX, [EBP-4]       ; Line 3
+	PUSH EAX
+	DEC EAX
 	MOV [EBP-4], EAX
+	POP EAX       ; Line 3
+	MOV [EBP-8], EAX
 .L2:
-	POP EAX       ; Line 4
+	MOV EAX, [EBP-8]       ; Line 4
 	CALL print_number
 .L3:
+	MOV EAX, [EBP-4]       ; Line 5
+	CALL print_number
 .L4:
-	ADD ESP, 4
+.L5:
+	ADD ESP, 8
 	POP EBP
 	MOV EAX,1
 	XOR EBX, EBX

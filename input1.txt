@@ -1,5 +1,11 @@
 int main(){
-    int a;
+    int a, b;
+    a = 5;
+    b = a--;
+    println(b);
+    println(a);
     a = 2;
+    b = a++;
+    println(b);
     println(a);
 }
