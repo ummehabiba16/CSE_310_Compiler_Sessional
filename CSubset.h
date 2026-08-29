@@ -683,9 +683,19 @@ public:
 
     // symbolTable->enterScope(); // allowing (int i = 0; ) // current grammar does not support variable declaration here
     visit(ctx->e1);
+    int loop_start = labelCount++;
+    asmFile<<"L"<<loop_start<<":\n";
     visit(ctx->e2);
-    visit(ctx->expression());
+    //EAX contains expr value
+    asmFile << "\tTEST EAX, EAX\n";
+    int loop_end = labelCount++;
+    asmFile << "\tJE L"<<loop_end<<"\n";
+    //loop body
     visit(ctx->statement());
+
+    visit(ctx->expression());
+    asmFile<< "\tJMP L"<<loop_start<<"\n";
+    asmFile<< "\tL"<<loop_end<<":\n";
     // symbolTable->exitScope();
     logRule(ctx, "statement : FOR LPAREN expression_statement expression_statement expression RPAREN statement");
     return nullptr;
@@ -694,7 +704,12 @@ public:
   any visitStatementIf(CSubsetParser::StatementIfContext *ctx) override
   {
     visit(ctx->expression());
+    //have the value in EAX
+    asmFile << "\tTEST EAX, EAX\n";
+    int end_label = labelCount++;
+    asmFile << "\tJE L"<<end_label<<"\n"; //JE actually checks ZF == 1 
     visit(ctx->statement());
+    asmFile << "L"<<end_label<<":\n";
     logRule(ctx, "statement : IF LPAREN expression RPAREN statement");
     return nullptr;
   }
@@ -702,16 +717,36 @@ public:
   any visitStatementIfElse(CSubsetParser::StatementIfElseContext *ctx) override
   {
     visit(ctx->expression());
+    //have the value in EAX
+    asmFile << "\tTEST EAX, EAX\n";
+    int else_label = labelCount++;
+    int end_label = labelCount++;
+    asmFile << "\tJE L"<<else_label<<"\n"; //JE actually checks ZF == 1 
+    //if-body
     visit(ctx->s1);
+    asmFile<<"\tJMP L"<<end_label<<"\n";
+    //else-body
+    asmFile << "L"<<else_label<<":\n";
     visit(ctx->s2);
+
+    asmFile << "L"<<end_label<<":\n";
     logRule(ctx, "statement : IF LPAREN expression RPAREN statement ELSE statement");
     return nullptr;
   }
 
   any visitStatementWhile(CSubsetParser::StatementWhileContext *ctx) override
   {
+    int loop_start = labelCount++;
+    asmFile << "L"<<loop_start<<":\n";
     visit(ctx->expression());
+    //value of expr in EAX
+    asmFile<<"\tTest EAX, EAX\n";
+    int loop_end = labelCount++;
+    asmFile<<"\tJE L"<<loop_end<<"\n";
+    //loop body
     visit(ctx->statement());
+    asmFile << "\tJMP L"<<loop_start<<"\n";
+    asmFile << "L" << loop_end << ":\n";
     logRule(ctx, "statement : WHILE LPAREN expression RPAREN statement");
     return nullptr;
   }
