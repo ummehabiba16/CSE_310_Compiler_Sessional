@@ -48,6 +48,8 @@ class AuxInfo
     vector<DataType> argTypes;
     // vector<bool> argIsArray; //skipping: current grammar does not allow array as parameters
     int offset;
+    string variable;
+    bool global;
 
 public:
     AuxInfo(){
@@ -56,6 +58,8 @@ public:
         size = 0;
         argCount = -1;
         offset = 0;
+        variable = "";
+        this->global = false;
     }
     // // for array
     // AuxInfo(string dataType, int size)
@@ -69,6 +73,8 @@ public:
         this->isArray = false;
         this->argCount = -1;
         this->offset = 0;
+        variable = "";
+        this->global = false;
     }
     AuxInfo(DataType dataType)
     {
@@ -76,6 +82,8 @@ public:
         this->isArray = false;
         this->argCount = -1;
         this->offset = 0;
+        variable = "";
+        this->global = false;
     }
     // function
     AuxInfo(string retType, vector<string> argTypes)
@@ -90,6 +98,8 @@ public:
         this->argCount = argTypes.size();
         this->isArray = false;
         this->offset = 0;
+        variable = "";
+        this->global = false;
     }
 
     AuxInfo(string retType, vector<DataType> argTypes)
@@ -99,6 +109,8 @@ public:
         this->argCount = argTypes.size();
         this->isArray = false;
         this->offset = 0;
+        variable = "";
+        this->global = false;
     }
 
     DataType getDataType()
@@ -109,9 +121,22 @@ public:
     {
         return typeToString(dataType);
     }
+    string getVariable(){
+        return this->variable;
+    }
+    void setVariable(string var){
+        this->variable = var;
+    }
     void setDataType(string dataType)
     {
         this->dataType = stringToType(dataType);
+    }
+    void setGlobal(bool g){
+        this->global = g;
+    }
+
+    bool getGlobal(){
+        return global;
     }
 
     int getSize()

@@ -543,6 +543,20 @@ public:
     int arraySize = stoi(ctx->CONST_INT()->getText());
     SymbolInfo *symbol = new SymbolInfo(name, "ID", arraySize);
     symbols.push_back(symbol);
+    // #
+    if (symbolTable->isRootScope())
+    {
+      asmFile << "\t" << name << " dd " << arraySize << " dup(0)\n";
+      symbol->getAuxInfo()->setGlobal(true);
+    }
+    else
+    {
+      // local array
+      int space = arraySize * 4;
+      asmFile << "\tSUB ESP, " << space << "\n";
+      symbol->getAuxInfo()->setOffset(nextLocalOffset);
+      nextLocalOffset -= space;
+    }
     logRule(ctx, "declaration_list : declaration_list COMMA ID LTHIRD CONST_INT RTHIRD");
     return symbols;
   }
@@ -554,6 +568,20 @@ public:
     int arraySize = stoi(ctx->CONST_INT()->getText());
     SymbolInfo *symbol = new SymbolInfo(name, "ID", arraySize);
     symbols.push_back(symbol);
+    // #
+    if (symbolTable->isRootScope())
+    {
+      asmFile << "\t" << name << " dd " << arraySize << " dup(0)\n";
+      symbol->getAuxInfo()->setGlobal(true);
+    }
+    else
+    {
+      // local array
+      int space = arraySize * 4;
+      asmFile << "\tSUB ESP, " << space << "\n";
+      symbol->getAuxInfo()->setOffset(nextLocalOffset);
+      nextLocalOffset -= space;
+    }
     logRule(ctx, "declaration_list : ID LTHIRD CONST_INT RTHIRD");
     return symbols;
   }
@@ -599,6 +627,7 @@ public:
     if (symbolTable->isRootScope())
     {
       asmFile << "\t" << name << " dd 1 dup(0)\n";
+      symbol->getAuxInfo()->setGlobal(true);
     }
     else
     {
@@ -623,6 +652,7 @@ public:
     {
       // # global
       asmFile << "\t" << name << " dd 1 dup(0)\n";
+      symbol->getAuxInfo()->setGlobal(true);
     }
     else
     {
@@ -684,18 +714,18 @@ public:
     // symbolTable->enterScope(); // allowing (int i = 0; ) // current grammar does not support variable declaration here
     visit(ctx->e1);
     int loop_start = labelCount++;
-    asmFile<<"L"<<loop_start<<":\n";
+    asmFile << "L" << loop_start << ":\n";
     visit(ctx->e2);
-    //EAX contains expr value
+    // EAX contains expr value
     asmFile << "\tTEST EAX, EAX\n";
     int loop_end = labelCount++;
-    asmFile << "\tJE L"<<loop_end<<"\n";
-    //loop body
+    asmFile << "\tJE L" << loop_end << "\n";
+    // loop body
     visit(ctx->statement());
 
     visit(ctx->expression());
-    asmFile<< "\tJMP L"<<loop_start<<"\n";
-    asmFile<< "\tL"<<loop_end<<":\n";
+    asmFile << "\tJMP L" << loop_start << "\n";
+    asmFile << "\tL" << loop_end << ":\n";
     // symbolTable->exitScope();
     logRule(ctx, "statement : FOR LPAREN expression_statement expression_statement expression RPAREN statement");
     return nullptr;
@@ -704,12 +734,12 @@ public:
   any visitStatementIf(CSubsetParser::StatementIfContext *ctx) override
   {
     visit(ctx->expression());
-    //have the value in EAX
+    // have the value in EAX
     asmFile << "\tTEST EAX, EAX\n";
     int end_label = labelCount++;
-    asmFile << "\tJE L"<<end_label<<"\n"; //JE actually checks ZF == 1 
+    asmFile << "\tJE L" << end_label << "\n"; // JE actually checks ZF == 1
     visit(ctx->statement());
-    asmFile << "L"<<end_label<<":\n";
+    asmFile << "L" << end_label << ":\n";
     logRule(ctx, "statement : IF LPAREN expression RPAREN statement");
     return nullptr;
   }
@@ -717,19 +747,19 @@ public:
   any visitStatementIfElse(CSubsetParser::StatementIfElseContext *ctx) override
   {
     visit(ctx->expression());
-    //have the value in EAX
+    // have the value in EAX
     asmFile << "\tTEST EAX, EAX\n";
     int else_label = labelCount++;
     int end_label = labelCount++;
-    asmFile << "\tJE L"<<else_label<<"\n"; //JE actually checks ZF == 1 
-    //if-body
+    asmFile << "\tJE L" << else_label << "\n"; // JE actually checks ZF == 1
+    // if-body
     visit(ctx->s1);
-    asmFile<<"\tJMP L"<<end_label<<"\n";
-    //else-body
-    asmFile << "L"<<else_label<<":\n";
+    asmFile << "\tJMP L" << end_label << "\n";
+    // else-body
+    asmFile << "L" << else_label << ":\n";
     visit(ctx->s2);
 
-    asmFile << "L"<<end_label<<":\n";
+    asmFile << "L" << end_label << ":\n";
     logRule(ctx, "statement : IF LPAREN expression RPAREN statement ELSE statement");
     return nullptr;
   }
@@ -737,15 +767,15 @@ public:
   any visitStatementWhile(CSubsetParser::StatementWhileContext *ctx) override
   {
     int loop_start = labelCount++;
-    asmFile << "L"<<loop_start<<":\n";
+    asmFile << "L" << loop_start << ":\n";
     visit(ctx->expression());
-    //value of expr in EAX
-    asmFile<<"\tTest EAX, EAX\n";
+    // value of expr in EAX
+    asmFile << "\tTest EAX, EAX\n";
     int loop_end = labelCount++;
-    asmFile<<"\tJE L"<<loop_end<<"\n";
-    //loop body
+    asmFile << "\tJE L" << loop_end << "\n";
+    // loop body
     visit(ctx->statement());
-    asmFile << "\tJMP L"<<loop_start<<"\n";
+    asmFile << "\tJMP L" << loop_start << "\n";
     asmFile << "L" << loop_end << ":\n";
     logRule(ctx, "statement : WHILE LPAREN expression RPAREN statement");
     return nullptr;
@@ -765,7 +795,7 @@ public:
     else
     {
       SymbolInfo *found = symbolTable->lookUp(name);
-      if (found->getAuxInfo()->getOffset() == 0)
+      if (found->getAuxInfo()->getGlobal())
       {
         asmFile << "\t; print " << name << "\n\tMOV EAX, [" << name << "]\n"
                 << "\tPUSH EAX\n\tCALL OUTDEC\n\tPOP EAX\n";
@@ -834,14 +864,18 @@ public:
       r = found->getAuxInfo();
     }
     // # global
-    if (r->getOffset() == 0)
+    if (r->getGlobal())
     {
-      asmFile << "[" << varName << "]";
+      // asmFile << "[" << varName << "]";
+      string var = "[" + varName + "]";
+      r->setVariable(var);
     }
     else
     {
       // local
-      asmFile << "[EBP" << r->getOffset() << "]";
+      // asmFile << "[EBP" << r->getOffset() << "]";
+      string var = "[EBP" + to_string(r->getOffset()) + "]";
+      r->setVariable(var);
     }
     logRule(ctx, "variable : ID");
     return r;
@@ -877,7 +911,30 @@ public:
           // return auxInfo;
         }
       }
+      asmFile << "\tPOP EAX\n"; // expression value in eax
+      asmFile << "\tMOV EBX,4\n";
+      asmFile << "\tMUL EBX\n";
+      // # global
+      if (auxInfo->getGlobal())
+      {
+
+        asmFile << "\tMOV EBX, EAX\n";
+        // asmFile<<"\t["<<varName<<"+ EBX]";
+        string var = "[" + varName + "+EBX]";
+        r->setVariable(var);
+      }
+      else
+      {
+        // local
+        // add the base offset distance
+        asmFile << "\tNEG EAX\n";
+        asmFile << "\tADD EAX, " << auxInfo->getOffset() << "\n";
+        asmFile << "\tMOV ESI, EAX\n";
+        string var = "[EBP + ESI]";
+        r->setVariable(var);
+      }
     }
+
     logRule(ctx, "variable : ID LTHIRD expression RTHIRD");
 
     return r;
@@ -896,10 +953,9 @@ public:
   {
     // #
     AuxInfo *a2 = any_cast<AuxInfo *>(visit(ctx->logic_expression()));
-    asmFile << "\tMOV ";
     AuxInfo *a1 = any_cast<AuxInfo *>(visit(ctx->variable()));
-    asmFile << ", EAX\n";
     asmFile << "\tPOP EAX\n";
+    asmFile << "\tMOV " << a1->getVariable() << ", EAX\n";
     // string name = ctx->variable()->getText();
     // string type = symbolTable->getDataType(name);
 
@@ -1276,9 +1332,8 @@ public:
   any visitFactorVar(CSubsetParser::FactorVarContext *ctx) override
   {
     // #
-    asmFile << "\tMOV EAX, ";
     AuxInfo *a1 = any_cast<AuxInfo *>(visit(ctx->variable()));
-    asmFile << "\n";
+    asmFile << "\tMOV EAX," << a1->getVariable() << "\n";
     logRule(ctx, "factor : variable");
     return a1;
   }
@@ -1340,8 +1395,8 @@ public:
   any visitFactorExpr(CSubsetParser::FactorExprContext *ctx) override
   {
 
-    asmFile << "\tPOP EAX\n";
     AuxInfo *a1 = any_cast<AuxInfo *>(visit(ctx->expression()));
+    asmFile << "\tPOP EAX\n";
     logRule(ctx, "factor : LPAREN expression RPAREN");
     return a1;
   }
@@ -1375,20 +1430,22 @@ public:
   // # phase 1
   any visitFactorIncOp(CSubsetParser::FactorIncOpContext *ctx) override
   {
-    asmFile << "\tMOV EAX, ";
+    // asmFile << "\tMOV EAX, ";
     AuxInfo *a1 = any_cast<AuxInfo *>(visit(ctx->variable()));
-    asmFile << "\n";
+    string address = a1->getVariable();
+    asmFile << "\tMOV EAX, " << address << "\n";
     // #
     asmFile << "\n\tPUSH EAX\n\tINC EAX\n";
-    SymbolInfo *found = symbolTable->lookUp(ctx->variable()->getText());
-    if (found->getAuxInfo()->getOffset() != 0)
-    {
-      asmFile << "\tMOV [EBP" << a1->getOffset() << "], EAX\n";
-    }
-    else
-    {
-      asmFile << "\tMOV [" << ctx->variable()->getText() << "], EAX\n";
-    }
+    // SymbolInfo *found = symbolTable->lookUp(ctx->variable()->getText());
+    // if (found->getAuxInfo()->getOffset() != 0)
+    // {
+    //   asmFile << "\tMOV [EBP" << a1->getOffset() << "], EAX\n";
+    // }
+    // else
+    // {
+    //   asmFile << "\tMOV [" << ctx->variable()->getText() << "], EAX\n";
+    // }
+    asmFile << "\tMOV " << address << ", EAX\n";
     asmFile << "\tPOP EAX\n";
     if (a1->getDataType() != DataType::INT && a1->getDataType() != DataType::FLOAT)
     {
@@ -1402,20 +1459,22 @@ public:
   // # phase 1
   any visitFactorDecOp(CSubsetParser::FactorDecOpContext *ctx) override
   {
-    asmFile << "\tMOV EAX, ";
+    // asmFile << "\tMOV EAX, ";
     AuxInfo *a1 = any_cast<AuxInfo *>(visit(ctx->variable()));
-    asmFile << "\n";
+    string address = a1->getVariable();
+    asmFile << "\tMOV EAX, " << address << "\n";
     // #
     asmFile << "\n\tPUSH EAX\n\tDEC EAX\n";
-    SymbolInfo *found = symbolTable->lookUp(ctx->variable()->getText());
-    if (found->getAuxInfo()->getOffset() != 0)
-    {
-      asmFile << "\tMOV [EBP" << a1->getOffset() << "], EAX\n";
-    }
-    else
-    {
-      asmFile << "\tMOV [" << ctx->variable()->getText() << "], EAX\n";
-    }
+    // SymbolInfo *found = symbolTable->lookUp(ctx->variable()->getText());
+    // if (found->getAuxInfo()->getOffset() != 0)
+    // {
+    //   asmFile << "\tMOV [EBP" << a1->getOffset() << "], EAX\n";
+    // }
+    // else
+    // {
+    //   asmFile << "\tMOV [" << ctx->variable()->getText() << "], EAX\n";
+    // }
+    asmFile << "\tMOV " << address << ", EAX\n";
     asmFile << "\tPOP EAX\n";
     if (a1->getDataType() != DataType::INT && a1->getDataType() != DataType::FLOAT)
     {

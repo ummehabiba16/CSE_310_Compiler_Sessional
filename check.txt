@@ -1,0 +1,39 @@
+any visitFactorDecOp(CSubsetParser::FactorDecOpContext *ctx) override
+{
+    AuxInfo *a1 = any_cast<AuxInfo *>(visit(ctx->variable()));
+    string addr = a1->getVariable();
+
+    asmFile << "\tMOV EAX, " << addr << "\n";
+    asmFile << "\tPUSH EAX\n";
+    asmFile << "\tDEC EAX\n";
+    asmFile << "\tMOV " << addr << ", EAX\n";
+    asmFile << "\tPOP EAX\n";
+
+    if (a1->getDataType() != DataType::INT && a1->getDataType() != DataType::FLOAT)
+    {
+        logError(ctx, "invalid arg to decop");
+        return a1;
+    }
+    logRule(ctx, "factor : variable DECOP");
+    return a1;
+}
+
+any visitFactorIncOp(CSubsetParser::FactorIncOpContext *ctx) override
+{
+    AuxInfo *a1 = any_cast<AuxInfo *>(visit(ctx->variable()));
+    string addr = a1->getVariable();          // already correct: "[w]", "[EBP-4]", "[w+EBX]", or "[EBP+ESI]"
+
+    asmFile << "\tMOV EAX, " << addr << "\n";
+    asmFile << "\tPUSH EAX\n";
+    asmFile << "\tINC EAX\n";
+    asmFile << "\tMOV " << addr << ", EAX\n";
+    asmFile << "\tPOP EAX\n";
+
+    if (a1->getDataType() != DataType::INT && a1->getDataType() != DataType::FLOAT)
+    {
+        logError(ctx, "invalid arg to incop");
+        return a1;
+    }
+    logRule(ctx, "factor : variable INCOP");
+    return a1;
+}
