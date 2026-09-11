@@ -1317,6 +1317,7 @@ public:
   {
     AuxInfo *a1 = any_cast<AuxInfo *>(visit(ctx->unary_expression()));
     // #
+    asmFile << "\tPOP EAX\n";
     if (ctx->ADDOP()->getText() == "-")
     {
       asmFile << "\tNEG EAX\n";
