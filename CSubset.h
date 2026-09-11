@@ -979,7 +979,7 @@ public:
         asmFile << "\tNEG EAX\n";
         asmFile << "\tADD EAX, " << auxInfo->getOffset() << "\n";
         asmFile << "\tMOV ESI, EAX\n";
-        string var = "[EBP + ESI]";
+        string var = "[EBP+ESI]";
         r->setVariable(var);
       }
     }
