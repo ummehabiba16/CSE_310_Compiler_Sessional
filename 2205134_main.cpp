@@ -5,6 +5,7 @@
 #include "CSubsetLexer.h"
 #include "CSubsetParser.h"
 #include "CSubset.h"
+#include "PeepHoleOptimizer.h"
 
 using namespace antlr4;
 using namespace std;
@@ -36,9 +37,9 @@ int main(int argc, const char* argv[]) {
     CSubsetParser::StartContext* tree = parser.start();
     CSubset cSubset;
     any parse_result = cSubset.visit(tree);
-    
     cout << "Parsing completed." << endl;
-
+    asmFile.close();
+    optimize("2205134.asm", "2205134_optcode.asm");
     inputFile.close();
     return 0;
 }
