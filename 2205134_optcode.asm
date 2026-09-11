@@ -12,105 +12,93 @@ main:
 	NEG EAX
 	PUSH EAX
 	MOV EAX, 0
-	MOV EBX,4
+	MOV EBX,4			; line 6
 	MUL EBX
 	MOV EBX, EAX
 	POP EAX
-	MOV [w+EBX], EAX
+	MOV [w+EBX], EAX			; line 6
 	MOV EAX, 0
-	MOV EBX,4
+	MOV EBX,4			; line 7
 	MUL EBX
 	MOV EBX, EAX
-	MOV EAX,[w+EBX]
+	MOV EAX,[w+EBX]			; line 7
 	PUSH EAX
 	MOV EAX, 0
-	MOV EBX,4
+	MOV EBX,4			; line 7
 	MUL EBX
 	NEG EAX
 	ADD EAX, -8
 	MOV ESI, EAX
 	POP EAX
-	MOV [EBP+ESI], EAX
+	MOV [EBP+ESI], EAX			; line 7
 	MOV EAX, 0
-	MOV EBX,4
+	MOV EBX,4			; line 8
 	MUL EBX
 	NEG EAX
 	ADD EAX, -8
 	MOV ESI, EAX
-	MOV EAX,[EBP+ESI]
-	MOV [EBP-4], EAX
-	; print i
-	MOV EAX, [EBP-4]
-	PUSH EAX
-	CALL OUTDEC
-	POP EAX
+	MOV EAX,[EBP+ESI]			; line 8
+	MOV [EBP-4], EAX			; line 8
+	MOV EAX, [EBP-4]		; print i
+	CALL OUTDEC			; line 9
 	MOV EAX, 0
-	MOV EBX,4
+	MOV EBX,4			; line 10
 	MUL EBX
 	MOV EBX, EAX
-	MOV EAX, [w+EBX]
+	MOV EAX, [w+EBX]			; line 10
 
 	PUSH EAX
 	INC EAX
 	MOV [w+EBX], EAX
 	MOV EAX, 1
-	MOV EBX,4
+	MOV EBX,4			; line 10
 	MUL EBX
 	NEG EAX
 	ADD EAX, -8
 	MOV ESI, EAX
 	POP EAX
-	MOV [EBP+ESI], EAX
+	MOV [EBP+ESI], EAX			; line 10
 	MOV EAX, 1
-	MOV EBX,4
+	MOV EBX,4			; line 11
 	MUL EBX
 	NEG EAX
 	ADD EAX, -8
 	MOV ESI, EAX
-	MOV EAX,[EBP+ESI]
-	MOV [EBP-4], EAX
-	; print i
-	MOV EAX, [EBP-4]
-	PUSH EAX
-	CALL OUTDEC
-	POP EAX
+	MOV EAX,[EBP+ESI]			; line 11
+	MOV [EBP-4], EAX			; line 11
+	MOV EAX, [EBP-4]		; print i
+	CALL OUTDEC			; line 12
 	MOV EAX, 0
-	MOV EBX,4
+	MOV EBX,4			; line 13
 	MUL EBX
 	MOV EBX, EAX
-	MOV EAX,[w+EBX]
-	MOV [EBP-4], EAX
-	; print i
-	MOV EAX, [EBP-4]
-	PUSH EAX
-	CALL OUTDEC
-	POP EAX
+	MOV EAX,[w+EBX]			; line 13
+	MOV [EBP-4], EAX			; line 13
+	MOV EAX, [EBP-4]		; print i
+	CALL OUTDEC			; line 14
 	MOV EAX, 0
 	PUSH EAX
-	MOV EAX,[EBP-4]
+	MOV EAX,[EBP-4]			; line 16
 	POP EBX
 	ADD EAX, EBX
-	MOV [EBP-4], EAX
+	MOV [EBP-4], EAX			; line 16
 	MOV EAX, 0
 	PUSH EAX
-	MOV EAX,[EBP-4]
+	MOV EAX,[EBP-4]			; line 17
 	POP EBX
 	SUB EAX, EBX
-	MOV [EBP-4], EAX
+	MOV [EBP-4], EAX			; line 17
 	MOV EAX, 1
 	PUSH EAX
-	MOV EAX,[EBP-4]
+	MOV EAX,[EBP-4]			; line 18
 	POP EBX
 	MUL EBX
-	MOV [EBP-4], EAX
-	; print i
-	MOV EAX, [EBP-4]
-	PUSH EAX
-	CALL OUTDEC
-	POP EAX
+	MOV [EBP-4], EAX			; line 18
+	MOV EAX, [EBP-4]		; print i
+	CALL OUTDEC			; line 19
 	MOV EAX, 0
 	PUSH EAX
-	MOV EAX,[EBP-4]
+	MOV EAX,[EBP-4]			; line 21
 	POP EBX
 	CMP EAX, EBX
 	JG L0
@@ -123,7 +111,7 @@ L1:
 	JE L2
 	MOV EAX, 10
 	PUSH EAX
-	MOV EAX,[EBP-4]
+	MOV EAX,[EBP-4]			; line 21
 	POP EBX
 	CMP EAX, EBX
 	JL L3
@@ -132,7 +120,7 @@ L1:
 L3:
 	MOV EAX, 1
 L4:
-	TEST EAX, EAX
+	TEST EAX, EAX 			; line 21
 	JE L2
 	MOV EAX, 1
 	JMP L5
@@ -143,7 +131,7 @@ L5:
 	JNE L6
 	MOV EAX, 0
 	PUSH EAX
-	MOV EAX,[EBP-4]
+	MOV EAX,[EBP-4]			; line 21
 	POP EBX
 	CMP EAX, EBX
 	JL L7
@@ -157,7 +145,7 @@ L8:
 	MOV EAX, 10
 	NEG EAX
 	PUSH EAX
-	MOV EAX,[EBP-4]
+	MOV EAX,[EBP-4]			; line 21
 	POP EBX
 	CMP EAX, EBX
 	JG L10
@@ -166,36 +154,33 @@ L8:
 L10:
 	MOV EAX, 1
 L11:
-	TEST EAX, EAX
+	TEST EAX, EAX 			; line 21
 	JE L9
 	MOV EAX, 1
 	JMP L12
 L9:
 	MOV EAX, 0
 L12:
-	TEST EAX, EAX
+	TEST EAX, EAX 			; line 21
 	JNE L6
 	MOV EAX, 0
 	JMP L13
 L6:
 	MOV EAX, 1
 L13:
-	TEST EAX, EAX
+	TEST EAX, EAX			; line 21
 	JE L14
 	MOV EAX, 100
-	MOV [EBP-4], EAX
+	MOV [EBP-4], EAX			; line 22
 	JMP L15
 L14:
 	MOV EAX, 200
-	MOV [EBP-4], EAX
+	MOV [EBP-4], EAX			; line 24
 L15:
-	; print i
-	MOV EAX, [EBP-4]
-	PUSH EAX
-	CALL OUTDEC
-	POP EAX
+	MOV EAX, [EBP-4]		; print i
+	CALL OUTDEC			; line 25
 	MOV EAX, 0
-	JMP main_exit
+	JMP main_exit			; line 27
 main_exit:
 
 	MOV EAX, 1    ; syscall number: sys_exit

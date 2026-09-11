@@ -589,7 +589,7 @@ public:
     {
       // local array
       int space = arraySize * 4;
-      asmFile << "\tSUB ESP, " << space << "\n";
+      asmFile << "\tSUB ESP, " << space <<"\t\t\t; line "<<ctx->getStart()->getLine()<<"\n";
       symbol->getAuxInfo()->setOffset(nextLocalOffset);
       nextLocalOffset -= space;
     }
@@ -693,7 +693,7 @@ public:
     else
     {
       // # local
-      asmFile << "\tSUB ESP, 4\n";
+      asmFile << "\tSUB ESP, 4"<<"\t\t\t; line "<<ctx->getStart()->getLine()<<"\n";
       symbol->getAuxInfo()->setOffset(nextLocalOffset);
       nextLocalOffset -= 4;
     }
@@ -754,7 +754,7 @@ public:
     visit(ctx->e2);
     // EAX contains expr value
     //asmFile << "\tPOP EAX\n"; //expression statement already popped in EAX
-    asmFile << "\tTEST EAX, EAX\n";
+    asmFile << "\tTEST EAX, EAX"<<"\t\t\t; line "<<ctx->getStart()->getLine()<<"\n";
     int loop_end = labelCount++;
     asmFile << "\tJE L" << loop_end << "\n";
     // loop body
@@ -774,7 +774,7 @@ public:
     visit(ctx->expression());
     // have the value in EAX
     asmFile << "\tPOP EAX\n";
-    asmFile << "\tTEST EAX, EAX\n";
+    asmFile << "\tTEST EAX, EAX"<<"\t\t\t; line "<<ctx->getStart()->getLine()<<"\n";
     int end_label = labelCount++;
     asmFile << "\tJE L" << end_label << "\n"; // JE actually checks ZF == 1
     visit(ctx->statement());
@@ -788,7 +788,7 @@ public:
     visit(ctx->expression());
     // have the value in EAX
     asmFile << "\tPOP EAX\n";
-    asmFile << "\tTEST EAX, EAX\n";
+    asmFile << "\tTEST EAX, EAX"<<"\t\t\t; line "<<ctx->getStart()->getLine()<<"\n";
     int else_label = labelCount++;
     int end_label = labelCount++;
     asmFile << "\tJE L" << else_label << "\n"; // JE actually checks ZF == 1
@@ -811,7 +811,7 @@ public:
     visit(ctx->expression());
     // value of expr in EAX
     asmFile << "\tPOP EAX\n";
-    asmFile << "\tTest EAX, EAX\n";
+    asmFile << "\tTest EAX, EAX"<<"\t\t\t; line "<<ctx->getStart()->getLine()<<"\n";
     int loop_end = labelCount++;
     asmFile << "\tJE L" << loop_end << "\n";
     // loop body
@@ -838,16 +838,15 @@ public:
       SymbolInfo *found = symbolTable->lookUp(name);
       if (found->getAuxInfo()->getGlobal())
       {
-        asmFile << "\t; print " << name << "\n\tMOV EAX, [" << name << "]\n"
-                << "\tPUSH EAX\n\tCALL OUTDEC\n\tPOP EAX\n";
+        asmFile << "\tMOV EAX, [" << name << "]"<< "\t\t; print " << name <<"\n";
       }
       else
       {
         SymbolInfo *found = symbolTable->lookUp(name);
         int offset = found->getAuxInfo()->getOffset();
-        asmFile << "\t; print " << name << "\n\tMOV EAX, [EBP" << offset << "]\n"
-                << "\tPUSH EAX\n\tCALL OUTDEC\n\tPOP EAX\n";
+        asmFile << "\tMOV EAX, [EBP" << offset << "]\t\t; print " << name << "\n";
       }
+      asmFile << "\tCALL OUTDEC\t\t\t; line "<<ctx->getStart()->getLine()<<"\n";
     }
     logRule(ctx, "statement : PRINTLN LPAREN ID RPAREN SEMICOLON");
     return nullptr;
@@ -860,7 +859,7 @@ public:
     // #
     asmFile << "\tPOP EAX\n"; //get the value pushed by expression
     //now the return value is in EAX
-    asmFile << "\tJMP " << currentFuncName << "_exit\n";
+    asmFile << "\tJMP " << currentFuncName << "_exit"<<"\t\t\t; line "<<ctx->getStart()->getLine()<<"\n";
     logRule(ctx, "statement : RETURN expression SEMICOLON");
     return nullptr;
   }
@@ -961,7 +960,7 @@ public:
         }
       }
       asmFile << "\tPOP EAX\n"; // expression value in eax
-      asmFile << "\tMOV EBX,4\n";
+      asmFile << "\tMOV EBX,4"<<"\t\t\t; line "<<ctx->getStart()->getLine()<<"\n";
       asmFile << "\tMUL EBX\n";
       // # global
       if (auxInfo->getGlobal())
@@ -1004,7 +1003,7 @@ public:
     AuxInfo *a2 = any_cast<AuxInfo *>(visit(ctx->logic_expression()));
     AuxInfo *a1 = any_cast<AuxInfo *>(visit(ctx->variable()));
     asmFile << "\tPOP EAX\n";
-    asmFile << "\tMOV " << a1->getVariable() << ", EAX\n";
+    asmFile << "\tMOV " << a1->getVariable() << ", EAX"<<"\t\t\t; line "<<ctx->getStart()->getLine()<<"\n";
     asmFile << "\tPUSH EAX\n";
     // string name = ctx->variable()->getText();
     // string type = symbolTable->getDataType(name);
@@ -1055,7 +1054,7 @@ public:
   {
     // Evaluate left operand
     AuxInfo *t1 = any_cast<AuxInfo *>(visit(ctx->r1));
-    asmFile << "\tPOP EAX\n";
+    asmFile << "\tPOP EAX"<<"\t\t\t; line "<<ctx->getStart()->getLine()<<"\n";
     asmFile << "\tTEST EAX, EAX\n";
     string logicop = ctx->LOGICOP()->getText();
     int skip_label = labelCount++;
@@ -1069,8 +1068,8 @@ public:
     }
     // evaluate right operand
     AuxInfo *t2 = any_cast<AuxInfo *>(visit(ctx->r2));
-    asmFile << "\tPOP EAX\n";
-    asmFile << "\tTEST EAX, EAX\n";
+    asmFile << "\tPOP EAX"<<"\t\t\t; line "<<ctx->getStart()->getLine()<<"\n";
+    asmFile << "\tTEST EAX, EAX \t\t\t; line "<<ctx->getStart()->getLine() << "\n";
     if (logicop == "&&")
     {
       asmFile << "\tJE L" << skip_label << "\n";
@@ -1143,7 +1142,7 @@ public:
     AuxInfo *r = new AuxInfo(DataType::INT);
 
     // #
-    asmFile << "\tPOP EAX\n";
+    asmFile << "\tPOP EAX"<<"\t\t\t; line "<<ctx->getStart()->getLine()<<"\n";
     asmFile << "\tPOP EBX\n";
 
     asmFile << "\tCMP EAX, EBX\n";
@@ -1224,7 +1223,7 @@ public:
     AuxInfo *a1 = any_cast<AuxInfo *>(visit(ctx->simple_expression()));
     AuxInfo *r;
     // #
-    asmFile << "\tPOP EAX\n";
+    asmFile << "\tPOP EAX"<<"\t\t\t; line "<<ctx->getStart()->getLine()<<"\n";
     asmFile << "\tPOP EBX\n";
     if (ctx->ADDOP()->getText() == "+")
     {
@@ -1268,7 +1267,7 @@ public:
     // #
     AuxInfo *a2 = any_cast<AuxInfo *>(visit(ctx->unary_expression()));
     AuxInfo *a1 = any_cast<AuxInfo *>(visit(ctx->term()));
-    asmFile << "\tPOP EAX\n";
+    asmFile << "\tPOP EAX"<<"\t\t\t; line "<<ctx->getStart()->getLine()<<"\n";
     asmFile << "\tPOP EBX\n";
     if (ctx->MULOP()->getText() == "*")
     {
@@ -1317,7 +1316,7 @@ public:
   {
     AuxInfo *a1 = any_cast<AuxInfo *>(visit(ctx->unary_expression()));
     // #
-    asmFile << "\tPOP EAX\n";
+    asmFile << "\tPOP EAX"<<"\t\t\t; line "<<ctx->getStart()->getLine()<<"\n";
     if (ctx->ADDOP()->getText() == "-")
     {
       asmFile << "\tNEG EAX\n";
@@ -1340,7 +1339,7 @@ public:
   any visitUnaryExprNot(CSubsetParser::UnaryExprNotContext *ctx) override
   {
     AuxInfo *a1 = any_cast<AuxInfo *>(visit(ctx->unary_expression()));
-    asmFile << "\tPOP EAX\n";
+    asmFile << "\tPOP EAX"<<"\t\t\t; line "<<ctx->getStart()->getLine()<<"\n";
     asmFile << "\tTEST EAX, EAX\n";
     int label_not_true = labelCount++;
     asmFile << "\tJNE L" << label_not_true << "\n";
@@ -1385,7 +1384,7 @@ public:
   {
     // #
     AuxInfo *a1 = any_cast<AuxInfo *>(visit(ctx->variable()));
-    asmFile << "\tMOV EAX," << a1->getVariable() << "\n";
+    asmFile << "\tMOV EAX," << a1->getVariable() <<"\t\t\t; line "<<ctx->getStart()->getLine()<< "\n";
     logRule(ctx, "factor : variable");
     return a1;
   }
@@ -1411,7 +1410,7 @@ public:
     vector<AuxInfo *> args = any_cast<vector<AuxInfo *>>(visit(ctx->argument_list()));
     vector<DataType> original = a1->getArgTypes();
     //#
-    asmFile<<"\tCALL "<<funcName<<"\n";
+    asmFile<<"\tCALL "<<funcName<<"\t\t\t; line "<<ctx->getStart()->getLine()<<"\n"; 
     //EAX has return value
     if (args.size() != original.size())
     {
@@ -1487,7 +1486,7 @@ public:
     // asmFile << "\tMOV EAX, ";
     AuxInfo *a1 = any_cast<AuxInfo *>(visit(ctx->variable()));
     string address = a1->getVariable();
-    asmFile << "\tMOV EAX, " << address << "\n";
+    asmFile << "\tMOV EAX, " << address <<"\t\t\t; line "<<ctx->getStart()->getLine()<< "\n";
     // #
     asmFile << "\n\tPUSH EAX\n\tINC EAX\n";
     // SymbolInfo *found = symbolTable->lookUp(ctx->variable()->getText());
@@ -1516,7 +1515,7 @@ public:
     // asmFile << "\tMOV EAX, ";
     AuxInfo *a1 = any_cast<AuxInfo *>(visit(ctx->variable()));
     string address = a1->getVariable();
-    asmFile << "\tMOV EAX, " << address << "\n";
+    asmFile << "\tMOV EAX, " << address <<"\t\t\t; line "<<ctx->getStart()->getLine()<<"\n";
     // #
     asmFile << "\n\tPUSH EAX\n\tDEC EAX\n";
     // SymbolInfo *found = symbolTable->lookUp(ctx->variable()->getText());
