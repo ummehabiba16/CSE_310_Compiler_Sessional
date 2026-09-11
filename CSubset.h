@@ -7,7 +7,9 @@ using namespace std;
 
 int errCount = 0;
 int nextLocalOffset = -4;
+int nextParamOffset = 8;
 bool addPrint = false;
+bool firstFuncDef = true;
 int labelCount = 0;
 string currentFuncName = "main";
 
@@ -212,7 +214,10 @@ public:
   // # phase 1
   any visitUnitFuncDefinition(CSubsetParser::UnitFuncDefinitionContext *ctx) override
   {
-    asmFile << "segment readable executable\n";
+    if(firstFuncDef){
+      asmFile << "segment readable executable\n";
+      firstFuncDef = false;
+    }
     visit(ctx->func_definition());
     logRule(ctx, "unit : func_definition");
     return nullptr;
@@ -268,6 +273,10 @@ public:
     string funcName = ctx->ID()->getText();
     // #
     currentFuncName = funcName;
+    nextLocalOffset = -4; // initialize for all function
+    nextParamOffset = 8;
+    asmFile << funcName << ":\n";
+    asmFile << "\tPUSH EBP\n\tMOV EBP, ESP\n";
     SymbolInfo *symbol = new SymbolInfo(funcName, "ID", retType);
     bool declared = false;
     SymbolInfo *found = symbolTable->lookUp(funcName);
@@ -330,6 +339,21 @@ public:
       }
     }
     visit(ctx->compound_statement());
+    // #
+    asmFile << funcName << "_exit:\n";
+    
+    if(currentFuncName == "main"){
+      //restoring EBP, ESP redundant
+      asmFile << "\n\tMOV EAX, 1    ; syscall number: sys_exit";
+      asmFile << "\n\tXOR EBX, EBX  ; exit code 0 (success)";
+      asmFile << "\n\tINT 0x80";
+    }
+    else{
+      asmFile << "\n\tADD ESP, " << ((-4) - nextLocalOffset);
+      asmFile << "\n\tPOP EBP";
+      asmFile << "\n\tRET "<<(nextParamOffset - 8)<<"\n";
+    }
+
     symbolTable->exitScope();
     logRule(ctx, "func_definition : type_specifier ID LPAREN parameter_list RPAREN compound_statement");
     return nullptr;
@@ -388,12 +412,17 @@ public:
     visit(ctx->compound_statement());
     // #
     asmFile << funcName << "_exit:\n";
-    asmFile << "\n\tADD ESP, " << ((-4) - nextLocalOffset);
-    asmFile << "\n\tPOP EBP";
-    asmFile << "\n\tMOV EAX, 1    ; syscall number: sys_exit";
-    asmFile << "\n\tXOR EBX, EBX  ; exit code 0 (success)";
-    asmFile << "\n\tINT 0x80";
-    asmFile << "\n\tPOP EBP\n\tRET\n";
+    if(currentFuncName == "main"){
+      asmFile << "\n\tMOV EAX, 1    ; syscall number: sys_exit";
+      asmFile << "\n\tXOR EBX, EBX  ; exit code 0 (success)";
+      asmFile << "\n\tINT 0x80\n\n";
+    }
+    else{
+      asmFile << "\n\tADD ESP, " << ((-4) - nextLocalOffset);
+      asmFile << "\n\tPOP EBP";
+      asmFile << "\n\tRET\n\n";
+    }
+    
     symbolTable->exitScope();
     logRule(ctx, "func_definition : type_specifier ID LPAREN RPAREN compound_statement");
     return nullptr;
@@ -414,6 +443,7 @@ public:
 
   any visitSingleParameterWoId(CSubsetParser::SingleParameterWoIdContext *ctx) override
   {
+    //for a function defintion, it must have id. otherwise an error will be produced.
     visit(ctx->type_specifier());
     string type = ctx->type_specifier()->getText();
     vector<ParamInfo> types;
@@ -436,6 +466,9 @@ public:
       logError(ctx, err);
       // return types;
     }
+    //#
+    symbol->getAuxInfo()->setOffset(nextParamOffset);
+    nextParamOffset+=4;
     types.push_back(ParamInfo(stringToType(type), true));
     logRule(ctx, "parameter_list : type_specifier ID");
     return types;
@@ -465,6 +498,9 @@ public:
       string err = "Multiple declaration of " + name + " in parameter";
       logError(ctx, err);
     }
+    //#
+    symbol->getAuxInfo()->setOffset(nextParamOffset);
+    nextParamOffset+=4;
 
     logRule(ctx, "parameter_list : parameter_list COMMA type_specifier ID");
     return types;
@@ -717,6 +753,7 @@ public:
     asmFile << "L" << loop_start << ":\n";
     visit(ctx->e2);
     // EAX contains expr value
+    //asmFile << "\tPOP EAX\n"; //expression statement already popped in EAX
     asmFile << "\tTEST EAX, EAX\n";
     int loop_end = labelCount++;
     asmFile << "\tJE L" << loop_end << "\n";
@@ -724,6 +761,7 @@ public:
     visit(ctx->statement());
 
     visit(ctx->expression());
+    asmFile<<"\tPOP EAX\n"; //the value of i++ not needed, just pop to clean the stack
     asmFile << "\tJMP L" << loop_start << "\n";
     asmFile << "\tL" << loop_end << ":\n";
     // symbolTable->exitScope();
@@ -735,6 +773,7 @@ public:
   {
     visit(ctx->expression());
     // have the value in EAX
+    asmFile << "\tPOP EAX\n";
     asmFile << "\tTEST EAX, EAX\n";
     int end_label = labelCount++;
     asmFile << "\tJE L" << end_label << "\n"; // JE actually checks ZF == 1
@@ -748,6 +787,7 @@ public:
   {
     visit(ctx->expression());
     // have the value in EAX
+    asmFile << "\tPOP EAX\n";
     asmFile << "\tTEST EAX, EAX\n";
     int else_label = labelCount++;
     int end_label = labelCount++;
@@ -770,6 +810,7 @@ public:
     asmFile << "L" << loop_start << ":\n";
     visit(ctx->expression());
     // value of expr in EAX
+    asmFile << "\tPOP EAX\n";
     asmFile << "\tTest EAX, EAX\n";
     int loop_end = labelCount++;
     asmFile << "\tJE L" << loop_end << "\n";
@@ -817,7 +858,8 @@ public:
   {
     visit(ctx->expression());
     // #
-    asmFile << "\tPOP EAX\n";
+    asmFile << "\tPOP EAX\n"; //get the value pushed by expression
+    //now the return value is in EAX
     asmFile << "\tJMP " << currentFuncName << "_exit\n";
     logRule(ctx, "statement : RETURN expression SEMICOLON");
     return nullptr;
@@ -834,6 +876,7 @@ public:
   any visitExpressionStmtExpression(CSubsetParser::ExpressionStmtExpressionContext *ctx) override
   {
     visit(ctx->expression());
+    asmFile<<"\tPOP EAX\n"; //** */
     logRule(ctx, "expression_statement : expression SEMICOLON");
     return nullptr;
   }
@@ -874,7 +917,13 @@ public:
     {
       // local
       // asmFile << "[EBP" << r->getOffset() << "]";
-      string var = "[EBP" + to_string(r->getOffset()) + "]";
+      string var;
+      if(r->getOffset() < 0){
+        var = "[EBP" + to_string(r->getOffset()) + "]";
+      }
+      else{
+        var = "[EBP+" + to_string(r->getOffset()) + "]";
+      }
       r->setVariable(var);
     }
     logRule(ctx, "variable : ID");
@@ -956,6 +1005,7 @@ public:
     AuxInfo *a1 = any_cast<AuxInfo *>(visit(ctx->variable()));
     asmFile << "\tPOP EAX\n";
     asmFile << "\tMOV " << a1->getVariable() << ", EAX\n";
+    asmFile << "\tPUSH EAX\n";
     // string name = ctx->variable()->getText();
     // string type = symbolTable->getDataType(name);
 
@@ -1005,6 +1055,7 @@ public:
   {
     // Evaluate left operand
     AuxInfo *t1 = any_cast<AuxInfo *>(visit(ctx->r1));
+    asmFile << "\tPOP EAX\n";
     asmFile << "\tTEST EAX, EAX\n";
     string logicop = ctx->LOGICOP()->getText();
     int skip_label = labelCount++;
@@ -1018,7 +1069,7 @@ public:
     }
     // evaluate right operand
     AuxInfo *t2 = any_cast<AuxInfo *>(visit(ctx->r2));
-
+    asmFile << "\tPOP EAX\n";
     asmFile << "\tTEST EAX, EAX\n";
     if (logicop == "&&")
     {
@@ -1358,7 +1409,9 @@ public:
     // vector<AuxInfo*> args = any_cast<vector<AuxInfo*>>(visit(ctx->argument_list()));
     vector<AuxInfo *> args = any_cast<vector<AuxInfo *>>(visit(ctx->argument_list()));
     vector<DataType> original = a1->getArgTypes();
-
+    //#
+    asmFile<<"\tCALL "<<funcName<<"\n";
+    //EAX has return value
     if (args.size() != original.size())
     {
       string err = "Total number of arguments mismatch in function " + funcName;
@@ -1517,8 +1570,9 @@ public:
 
   any visitArgumentsCommaLogicExpr(CSubsetParser::ArgumentsCommaLogicExprContext *ctx) override
   {
-    vector<AuxInfo *> args = any_cast<vector<AuxInfo *>>(visit(ctx->arguments()));
+    //# right to left push needed , visit logic_expression first
     AuxInfo *a1 = any_cast<AuxInfo *>(visit(ctx->logic_expression()));
+    vector<AuxInfo *> args = any_cast<vector<AuxInfo *>>(visit(ctx->arguments()));
     if (a1->getIsArray() == true)
     {
       string err = "Type mismatch, " + ctx->logic_expression()->getText() + " is an array";
